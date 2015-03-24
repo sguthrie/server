@@ -1,9 +1,8 @@
 *~
 *.swp
 *.swo
-ga4gh-example-data
-*.swp
-*.swo
+ga4gh-example-data*
+scripts/auth.yml
 
 # Below taken from https://gist.github.com/octocat/9257657
 # and https://github.com/github/gitignore/blob/master/Python.gitignore
@@ -104,3 +103,6 @@ target/
 # Eclipse PyDev Project files
 .project
 .pydevproject
+
+# Pycharm
+.idea/

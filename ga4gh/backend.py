@@ -6,15 +6,21 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import os
+import random
 
 import ga4gh.protocol as protocol
+import ga4gh.datamodel.references as references
+import ga4gh.datamodel.reads as reads
+import ga4gh.exceptions as exceptions
+import ga4gh.datamodel.variants as variants
 
 
-class Backend(object):
+class AbstractBackend(object):
     """
-    The GA4GH backend. This class provides methods for all of the GA4GH
-    protocol end points.
+    An abstract GA4GH backend.
+    This class provides methods for all of the GA4GH protocol end points.
     """
     def __init__(self, dataDir, rnaReadSetClass=None, expressionAnalysisClass=None, variantSetClass=None):
         self._dataDir = dataDir
@@ -33,6 +39,30 @@ class Backend(object):
             denote an RNA demo and will use both the Reads and ExpressionAnalysis
             APIs.  To do so, all the input data will need to be located in the same
             dataDir specified on the command line.
+        self._variantSetIds = []
+        self._referenceSetIdMap = {}
+        self._referenceSetIds = []
+        self._readGroupSetIdMap = {}
+        self._readGroupSetIds = []
+        self._callSetIdMap = {}
+        self._callSetIds = []
+        self._requestValidation = False
+        self._responseValidation = False
+        self._defaultPageSize = 100
+
+    def getVariantSets(self):
+        """
+        Returns the list of VariantSets in this backend.
+        """
+        return list(self._variantSetIdMap.values())
+
+    def getVariantSetIdMap(self):
+        # TODO remove this --- why do we need direct access to the map?
+        return self._variantSetIdMap
+
+    def getCallSetIdMap(self):
+        # TODO remove this --- why do we need direct access to the map?
+        return self._callSetIdMap
 
             It is assumed that datadir will contain 2 sub-directories:
               reads
@@ -108,8 +138,16 @@ class Backend(object):
         any point using the nextPageToken attribute of the request object.
         """
         self.startProfile()
-        # TODO change this to fromJSONDict and validate
-        request = requestClass.fromJSONString(requestStr)
+        try:
+            requestDict = json.loads(requestStr)
+        except ValueError:
+            raise exceptions.InvalidJsonException(requestStr)
+        self.validateRequest(requestDict, requestClass)
+        request = requestClass.fromJsonDict(requestDict)
+        if request.pageSize is None:
+            request.pageSize = self._defaultPageSize
+        if request.pageSize <= 0:
+            raise exceptions.BadPageSizeException(request.pageSize)
         pageList = []
         nextPageToken = None
         for obj, nextPageToken in objectGenerator(request):
@@ -119,8 +157,50 @@ class Backend(object):
         response = responseClass()
         response.nextPageToken = nextPageToken
         setattr(response, pageListName, pageList)
+        responseDict = response.toJsonDict()
+        self.validateResponse(responseDict, responseClass)
         self.endProfile()
-        return response.toJSONString()
+        return response.toJsonString()
+
+    def searchReadGroupSets(self, request):
+        """
+        Returns a GASearchReadGroupSetsResponse for the specified
+        GASearchReadGroupSetsRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.GASearchReadGroupSetsRequest,
+            protocol.GASearchReadGroupSetsResponse, "readGroupSets",
+            self.readGroupSetsGenerator)
+
+    def searchReads(self, request):
+        """
+        Returns a GASearchReadsResponse for the specified
+        GASearchReadsRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.GASearchReadsRequest,
+            protocol.GASearchReadsResponse, "reads",
+            self.readsGenerator)
+
+    def searchReferenceSets(self, request):
+        """
+        Returns a GASearchReferenceSetsResponse for the specified
+        GASearchReferenceSetsRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.GASearchReferenceSetsRequest,
+            protocol.GASearchReferenceSetsResponse, "referenceSets",
+            self.referenceSetsGenerator)
+
+    def searchReferences(self, request):
+        """
+        Returns a GASearchReferencesResponse for the specified
+        GASearchReferencesRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.GASearchReferencesRequest,
+            protocol.GASearchReferencesResponse, "references",
+            self.referencesGenerator)
 
     def searchVariantSets(self, request):
         """
@@ -142,25 +222,58 @@ class Backend(object):
             protocol.GASearchVariantsResponse, "variants",
             self.variantsGenerator)
 
-    def variantSetsGenerator(self, request):
+    def searchCallSets(self, request):
         """
-        Returns a generator over the (variantSet, nextPageToken) pairs defined
-        by the speficied request.
+        Returns a GASearchCallSetsResponse for the specified
+        GASearchCallSetsRequest Object.
+        """
+        return self.runSearchRequest(
+            request, protocol.GASearchCallSetsRequest,
+            protocol.GASearchCallSetsResponse, "callSets",
+            self.callSetsGenerator)
+
+    # Iterators over the data hieararchy
+
+    def _topLevelObjectGenerator(self, request, idMap, idList):
+        """
+        Generalisation of the code to iterate over the objects at the top
+        of the data hierarchy.
         """
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = self.parsePageToken(request.pageToken, 1)
-        while currentIndex < len(self._variantSetIds):
-            variantSet = protocol.GAVariantSet()
-            variantSet.id = self._variantSetIds[currentIndex]
-            variantSet.datasetId = "NotImplemented"
-            variantSet.metadata = self._variantSetIdMap[
-                variantSet.id].getMetadata()
+        while currentIndex < len(idList):
+            objectId = idList[currentIndex]
+            object_ = idMap[objectId]
             currentIndex += 1
             nextPageToken = None
-            if currentIndex < len(self._variantSetIds):
+            if currentIndex < len(idList):
                 nextPageToken = str(currentIndex)
-            yield variantSet, nextPageToken
+            yield object_.toProtocolElement(), nextPageToken
+
+    def readGroupSetsGenerator(self, request):
+        """
+        Returns a generator over the (readGroupSet, nextPageToken) pairs
+        defined by the specified request.
+        """
+        return self._topLevelObjectGenerator(
+            request, self._readGroupSetIdMap, self._readGroupSetIds)
+
+    def referenceSetsGenerator(self, request):
+        """
+        Returns a generator over the (referenceSet, nextPageToken) pairs
+        defined by the specified request.
+        """
+        return self._topLevelObjectGenerator(
+            request, self._referenceSetIdMap, self._referenceSetIds)
+
+    def variantSetsGenerator(self, request):
+        """
+        Returns a generator over the (variantSet, nextPageToken) pairs defined
+        by the specified request.
+        """
+        return self._topLevelObjectGenerator(
+            request, self._variantSetIdMap, self._variantSetIds)
 
     def variantsGenerator(self, request):
         """
@@ -184,6 +297,37 @@ class Backend(object):
                     nextPageToken = "{0}:{1}".format(
                         variantSetIndex, variant.start + 1)
                     yield variant, nextPageToken
+
+    def callSetsGenerator(self, request):
+        """
+        Returns a generator over the (callSet, nextPageToken) pairs defined by
+        the specified request.
+        """
+        # if no variantSetIds are input from client,
+        # then set variantSetIds to all variantSetIds
+        if request.variantSetIds == []:
+            variantSetIds = self._variantSetIds
+        else:
+            variantSetIds = request.variantSetIds
+        name = request.name
+        if request.pageToken is not None:
+            startVariantSetIndex, startCallSetPosition = self.parsePageToken(
+                request.pageToken, 2)
+        else:
+            startVariantSetIndex = 0
+            startCallSetPosition = 0
+
+        for variantSetIndex in range(startVariantSetIndex, len(variantSetIds)):
+            variantSetId = variantSetIds[variantSetIndex]
+            if variantSetId in self._variantSetIdMap:
+                variantSet = self._variantSetIdMap[variantSetId]
+                callSetIterator = variantSet.getCallSets(
+                    name, startCallSetPosition)
+                for callSet, callSetPosition in callSetIterator:
+                    callSet.variantSetIds = self._callSetIdMap[callSet.name]
+                    nextPageToken = "{0}:{1}".format(
+                        variantSetIndex, callSetPosition + 1)
+                    yield callSet, nextPageToken
 
     def searchExpressionAnalysis(self, request):
         """
@@ -226,15 +370,113 @@ class Backend(object):
     def endProfile(self):
         pass
 
+    def validateRequest(self, jsonDict, requestClass):
+        """
+        Ensures the jsonDict corresponds to a valid instance of requestClass
+        Throws an error if the data is invalid
+        """
+        if self._requestValidation:
+            if not requestClass.validate(jsonDict):
+                raise exceptions.RequestValidationFailureException(
+                    jsonDict, requestClass)
 
-class MockBackend(Backend):
+    def validateResponse(self, jsonDict, responseClass):
+        """
+        Ensures the jsonDict corresponds to a valid instance of responseClass
+        Throws an error if the data is invalid
+        """
+        if self._responseValidation:
+            if not responseClass.validate(jsonDict):
+                raise exceptions.ResponseValidationFailureException(
+                    jsonDict, responseClass)
+
+    def setRequestValidation(self, requestValidation):
+        """
+        Set enabling request validation
+        """
+        self._requestValidation = requestValidation
+
+    def setResponseValidation(self, responseValidation):
+        """
+        Set enabling response validation
+        """
+        self._responseValidation = responseValidation
+
+    def setDefaultPageSize(self, defaultPageSize):
+        """
+        Sets the default page size for request to the specified value.
+        """
+        self._defaultPageSize = defaultPageSize
+
+
+class EmptyBackend(AbstractBackend):
     """
-    A mock Backend class for testing.
+    A GA4GH backend that contains no data.
     """
-    def __init__(self, dataDir=None):
-        # TODO make a superclass of backend that does this
-        # automatically without needing to know about the internal
-        # details of the backend.
-        self._dataDir = None
-        self._variantSetIdMap = {}
-        self._variantSetIds = []
+
+
+class SimulatedBackend(AbstractBackend):
+    """
+    A GA4GH backend backed by no data; used mostly for testing
+    """
+    def __init__(self, randomSeed=0, numCalls=1, variantDensity=0.5,
+                 numVariantSets=1):
+        super(SimulatedBackend, self).__init__()
+        self._randomSeed = randomSeed
+        self._randomGenerator = random.Random()
+        self._randomGenerator.seed(self._randomSeed)
+        for i in range(numVariantSets):
+            variantSetId = "simVs{}".format(i)
+            seed = self._randomGenerator.randint(0, 2**32 - 1)
+            variantSet = variants.SimulatedVariantSet(
+                seed, numCalls, variantDensity, variantSetId)
+            self._variantSetIdMap[variantSetId] = variantSet
+        self._variantSetIds = sorted(self._variantSetIdMap.keys())
+
+
+class FileSystemBackend(AbstractBackend):
+    """
+    A GA4GH backend backed by data on the file system
+    """
+    def __init__(self, dataDir):
+        super(FileSystemBackend, self).__init__()
+        self._dataDir = dataDir
+        # TODO this code is very ugly and should be regarded as a temporary
+        # stop-gap until we deal with iterating over the data tree properly.
+        # Variants
+        variantSetDir = os.path.join(self._dataDir, "variants")
+        for variantSetId in os.listdir(variantSetDir):
+            relativePath = os.path.join(variantSetDir, variantSetId)
+            if os.path.isdir(relativePath):
+                self._variantSetIdMap[variantSetId] = \
+                    variants.variantSetFactory(variantSetId, relativePath)
+        self._variantSetIds = sorted(self._variantSetIdMap.keys())
+
+        # References
+        referenceSetDir = os.path.join(self._dataDir, "references")
+        for referenceSetId in os.listdir(referenceSetDir):
+            relativePath = os.path.join(referenceSetDir, referenceSetId)
+            if os.path.isdir(relativePath):
+                referenceSet = references.ReferenceSet(
+                    referenceSetId, relativePath)
+                self._referenceSetIdMap[referenceSetId] = referenceSet
+        self._referenceSetIds = sorted(self._referenceSetIdMap.keys())
+
+        # Reads
+        readGroupSetDir = os.path.join(self._dataDir, "reads")
+        for readGroupSetId in os.listdir(readGroupSetDir):
+            relativePath = os.path.join(readGroupSetDir, readGroupSetId)
+            if os.path.isdir(relativePath):
+                readGroupSet = reads.ReadGroupSet(
+                    readGroupSetId, relativePath)
+                self._readGroupSetIdMap[readGroupSetId] = readGroupSet
+        self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
+
+        # callSets
+        for variantSet in self._variantSetIdMap.values():
+            sampleNames = variantSet.getSampleNames()
+            variantSetId = variantSet.getId()
+            for name in sampleNames:
+                if name not in self._callSetIdMap:
+                    self._callSetIdMap[name] = []
+                self._callSetIdMap[name].append(variantSetId)

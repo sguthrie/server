@@ -28,8 +28,8 @@ f.close()
 ga4ghVersion = parseVersion("ga4gh/__init__.py")
 # Flask must come after all other requirements that have "flask" as a prefix
 # due to a setuptools bug.
-requirements = ["avro", "Flask-API", "flask-cors", "flask", "pysam",
-                "requests", "wormtable"]
+requirements = ["avro", "Flask-API", "flask-cors", "flask", "humanize",
+                "pysam>=0.8.2", "requests", "wormtable"]
 
 setup(
     name="ga4gh",
@@ -37,7 +37,9 @@ setup(
     description="A reference implementation of the ga4gh API",
     license='Apache License 2.0',
     long_description=ga4ghReadme,
-    packages=["ga4gh", "ga4gh.datamodel"],
+    packages=["ga4gh", "ga4gh.datamodel", "ga4gh.templates"],
+    include_package_data=True,
+    zip_safe=False,
     author="Global Alliance for Genomics and Health",
     author_email="theglobalalliance@genomicsandhealth.org",
     url="https://github.com/ga4gh/server",
@@ -45,6 +47,8 @@ setup(
         'console_scripts': [
             'ga4gh_client=ga4gh.cli:client_main',
             'ga4gh_server=ga4gh.cli:server_main',
+            'ga2vcf=ga4gh.cli:ga2vcf_main',
+            'ga2sam=ga4gh.cli:ga2sam_main',
         ]
     },
     classifiers=[

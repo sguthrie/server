@@ -12,11 +12,8 @@ import unittest
 
 import avro.schema
 
-import tests
 import ga4gh.protocol as protocol
-
-# TODO We should add some tests here - see comment from @pashields on
-# https://github.com/ga4gh/server/pull/39
+import tests.utils as utils
 
 
 def randomString():
@@ -41,22 +38,8 @@ class SchemaTest(unittest.TestCase):
         "double": 0.125,
         "float": 0.25
     }
-    badValueMap = {
-        "string": 42,
-        "int": "string",
-        "long": "string",
-        "boolean": {},
-        "double": {},
-        "float": {},
-    }
-    randomValueMap = {
-        "string": randomString,
-        "int": lambda: random.randint(-42, 42),
-        "long": lambda: random.randint(-42, 42),
-        "boolean": lambda: bool(random.randint(0, 1)),
-        "double": lambda: random.uniform(-42, 42),
-        "float": lambda: random.uniform(-42, 42),
-    }
+
+    instanceGenerator = utils.InstanceGenerator()
 
     def getProtocolClasses(self):
         """
@@ -83,62 +66,13 @@ class SchemaTest(unittest.TestCase):
         """
         Returns a value that should trigger a schema validation failure.
         """
-        field = self.getAvroSchema(cls, fieldName)
-        typ = field.type
-        if isinstance(typ, avro.schema.UnionSchema):
-            typ = typ.schemas[1]
-        if isinstance(typ, avro.schema.MapSchema):
-            ret = ["string"]
-        elif isinstance(typ, avro.schema.ArraySchema):
-            ret = 42.0
-        elif isinstance(typ, avro.schema.EnumSchema):
-            ret = "NO ENUM COULD HAVE THIS NAME"
-        elif isinstance(typ, avro.schema.RecordSchema):
-            ret = 42
-        elif typ.type in self.badValueMap:
-            ret = self.badValueMap[typ.type]
+        fieldType = self.getAvroSchema(cls, fieldName).type
+        if isinstance(fieldType, avro.schema.UnionSchema):
+            types = list(t.type for t in fieldType.schemas)
+            val = self.instanceGenerator.generateInvalidateTypeValue(*types)
         else:
-            raise Exception("schema assumptions violated")
-        return ret
-
-    def getRandomValue(self, cls, fieldName):
-        """
-        Returns a value randomly generated conforming to the schema.
-        """
-        maxListSize = 10
-        field = self.getAvroSchema(cls, fieldName)
-        typ = field.type
-        if isinstance(typ, avro.schema.UnionSchema):
-            # TODO put in some probability that return None if
-            # we have a union schema
-            typ = typ.schemas[1]
-        if isinstance(typ, avro.schema.MapSchema):
-            ret = {}
-            for j in range(random.randint(0, maxListSize)):
-                randStr = [randomString() for _ in range(
-                    random.randint(0, maxListSize))]
-                ret["key{0}".format(j)] = randStr
-        elif isinstance(typ, avro.schema.ArraySchema):
-            randInt = random.randint(0, maxListSize)
-            if cls.isEmbeddedType(field.name):
-                embeddedClass = cls.getEmbeddedType(field.name)
-
-                def getRandInst():
-                    return self.getRandomInstance(embeddedClass)
-            else:
-                getRandInst = self.randomValueMap[typ.items.type]
-            ret = [getRandInst() for j in range(randInt)]
-        elif isinstance(typ, avro.schema.EnumSchema):
-            ret = random.choice(typ.symbols)
-        elif isinstance(typ, avro.schema.RecordSchema):
-            self.assertTrue(cls.isEmbeddedType(fieldName))
-            embeddedClass = cls.getEmbeddedType(fieldName)
-            ret = self.getRandomInstance(embeddedClass)
-        elif typ.type in self.randomValueMap:
-            ret = self.randomValueMap[typ.type]()
-        else:
-            raise Exception("schema assumptions violated")
-        return ret
+            val = self.instanceGenerator.generateInvalidateTypeValue(fieldType)
+        return val
 
     def getTypicalValue(self, cls, fieldName):
         """
@@ -154,8 +88,8 @@ class SchemaTest(unittest.TestCase):
         typ = field.type
         if isinstance(typ, avro.schema.UnionSchema):
             t0 = typ.schemas[0]
-            if (isinstance(t0, avro.schema.PrimitiveSchema)
-                    and t0.type == "null"):
+            if (isinstance(t0, avro.schema.PrimitiveSchema) and
+                    t0.type == "null"):
                 typ = typ.schemas[1]
             else:
                 raise Exception(err)
@@ -203,11 +137,7 @@ class SchemaTest(unittest.TestCase):
         Returns an instance of the specified class with randomly generated
         values conforming to the schema.
         """
-        instance = cls()
-        for field in cls.schema.fields:
-            setattr(instance, field.name,
-                    self.getRandomValue(cls, field.name))
-        return instance
+        return self.instanceGenerator.generateInstance(cls)
 
     def setRequiredValues(self, instance):
         """
@@ -255,11 +185,12 @@ class EqualityTest(SchemaTest):
         for cls in self.getProtocolClasses():
             for factory in factories:
                 i1 = factory(cls)
-                i2 = cls.fromJSONDict(i1.toJSONDict())
+                i2 = cls.fromJsonDict(i1.toJsonDict())
                 self.verifyEqualityOperations(i1, i2)
 
     def testDifferentValues(self):
-        factory = lambda cls: cls()
+        def factory(cls):
+            return cls()
         factories = [factory, self.getTypicalInstance, self.getDefaultInstance,
                      self.getRandomInstance]
         classes = list(self.getProtocolClasses())
@@ -273,7 +204,7 @@ class EqualityTest(SchemaTest):
 
     def testDifferentLengthArrays(self):
         i1 = self.getTypicalInstance(protocol.GACallSet)
-        i2 = protocol.GACallSet.fromJSONDict(i1.toJSONDict())
+        i2 = protocol.GACallSet.fromJsonDict(i1.toJsonDict())
         i2.variantSetIds.append("extra")
         self.assertFalse(i1 == i2)
 
@@ -285,12 +216,12 @@ class SerialisationTest(SchemaTest):
     def validateClasses(self, factory):
         for cls in self.getProtocolClasses():
             instance = factory(cls)
-            jsonStr = instance.toJSONString()
-            otherInstance = cls.fromJSONString(jsonStr)
+            jsonStr = instance.toJsonString()
+            otherInstance = cls.fromJsonString(jsonStr)
             self.assertEqual(instance, otherInstance)
 
-            jsonDict = instance.toJSONDict()
-            otherInstance = cls.fromJSONDict(jsonDict)
+            jsonDict = instance.toJsonDict()
+            otherInstance = cls.fromJsonDict(jsonDict)
             self.assertEqual(instance, otherInstance)
 
     def testSerialiseDefaultValues(self):
@@ -312,7 +243,7 @@ class ValidatorTest(SchemaTest):
     def validateClasses(self, factory):
         for cls in self.getProtocolClasses():
             instance = factory(cls)
-            jsonDict = instance.toJSONDict()
+            jsonDict = instance.toJsonDict()
             self.assertTrue(cls.validate(jsonDict))
 
     def testValidateDefaultValues(self):
@@ -327,7 +258,7 @@ class ValidatorTest(SchemaTest):
     def testValidateBadValues(self):
         for cls in self.getProtocolClasses():
             instance = self.getTypicalInstance(cls)
-            jsonDict = instance.toJSONDict()
+            jsonDict = instance.toJsonDict()
             self.assertFalse(cls.validate(None))
             self.assertFalse(cls.validate([]))
             self.assertFalse(cls.validate(1))
@@ -336,7 +267,7 @@ class ValidatorTest(SchemaTest):
                 dct = dict(jsonDict)
                 dct[key] = self.getInvalidValue(cls, key)
                 self.assertFalse(cls.validate(dct))
-            for c in tests.powerset(jsonDict.keys(), 10):
+            for c in utils.powerset(jsonDict.keys(), 10):
                 if len(c) > 0:
                     dct = dict(jsonDict)
                     for f in c:

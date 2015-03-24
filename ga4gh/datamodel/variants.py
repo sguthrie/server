@@ -6,24 +6,181 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import glob
 import datetime
+import glob
+import itertools
+import os
+import random
 
 import pysam
 import wormtable as wt
 
 import ga4gh.protocol as protocol
+import ga4gh.exceptions as exceptions
 
 
-class VariantSet(object):
+def convertVCFPhaseset(vcfPhaseset):
     """
-    Class representing a single VariantSet in the GA4GH data model.
+    Parses the VCF phaseset string
     """
-    # TODO abstract details shared by wormtable and tabix based backends.
+    if vcfPhaseset is not None and vcfPhaseset != ".":
+        phaseset = vcfPhaseset
+    else:
+        phaseset = "*"
+    return phaseset
 
 
-class WormtableVariantSet(VariantSet):
+def convertVCFGenotype(vcfGenotype, vcfPhaseset):
+    """
+    Parses the VCF genotype and VCF phaseset strings
+    """
+    phaseset = None
+    if vcfGenotype is not None:
+        delim = "/"
+        if "|" in vcfGenotype:
+            delim = "|"
+            phaseset = convertVCFPhaseset(vcfPhaseset)
+        if "." in vcfGenotype:
+            genotype = [-1]
+        else:
+            genotype = map(int, vcfGenotype.split(delim))
+    else:
+        genotype = [-1]
+
+    return genotype, phaseset
+
+
+def variantSetFactory(variantSetId, relativePath):
+    if variantSetId.endswith(".wt"):
+        return WormtableVariantSet(variantSetId, relativePath)
+    else:
+        return HtslibVariantSet(variantSetId, relativePath)
+
+
+class AbstractVariantSet(object):
+    """
+    An abstract base class of a variant set
+    """
+    def __init__(self):
+        self._sampleNames = []
+        self._variantSetId = None
+
+    def toProtocolElement(self):
+        """
+        Converts this VariantSet into its GA4GH protocol equivalent.
+        """
+        protocolElement = protocol.GAVariantSet()
+        protocolElement.id = self._variantSetId  # TODO should be self._id
+        protocolElement.datasetId = "NotImplemented"
+        protocolElement.metadata = self.getMetadata()
+        return protocolElement
+
+    def getSampleNames(self):
+        """
+        Returns the sampleNames for the variants in this VariantSet.
+        """
+        return self._sampleNames
+
+    def getId(self):
+        """
+        Returns the ID of this VariantSet.
+
+        TODO: this should be pushed into a superclass, and use an
+        instance variant self._id.
+        """
+        return self._variantSetId
+
+    def getNumVariants(self):
+        """
+        Returns the number of variants contained in this VariantSet.
+        """
+        raise NotImplementedError()
+
+
+class SimulatedVariantSet(AbstractVariantSet):
+    """
+    A variant set that doesn't derive from a data store.
+    Used mostly for testing.
+    """
+    def __init__(self, randomSeed, numCalls, variantDensity, variantSetId):
+        super(SimulatedVariantSet, self).__init__()
+        self._randomSeed = randomSeed
+        self._numCalls = numCalls
+        self._variantDensity = variantDensity
+        now = protocol.convertDatetime(datetime.datetime.now())
+        self._created = now
+        self._updated = now
+        self._variantSetId = variantSetId
+
+    def getNumVariants(self):
+        return 0
+
+    def getMetadata(self):
+        ret = []
+        return ret
+
+    def getCallSets(self, name, startPosition):
+        for i in []:
+            yield i
+
+    def getVariants(self, referenceName, startPosition, endPosition,
+                    variantName, callSetIds):
+        randomNumberGenerator = random.Random()
+        i = startPosition
+        while i < endPosition:
+            randomNumberGenerator.seed(self._randomSeed + i)
+            if randomNumberGenerator.random() < self._variantDensity:
+                # TODO fix variant set IDS so we can have multiple
+                variant = self.generateVariant(
+                    self._variantSetId, referenceName,
+                    i, randomNumberGenerator)
+                yield variant
+            i += 1
+
+    def generateVariant(self, variantSetId, referenceName, position,
+                        randomNumberGenerator):
+        """
+        Generate a random variant for the specified position using the
+        specified random number generator. This generator should be seeded
+        with a value that is unique to this position so that the same variant
+        will always be produced regardless of the order it is generated in.
+        """
+        variant = protocol.GAVariant()
+        variant.variantSetId = variantSetId
+        # The id is the combination of the position, referenceName and variant
+        # set id; this allows us to generate the variant from the position and
+        # id.
+        variant.id = "{0}:{1}:{2}".format(
+            variant.variantSetId, referenceName, position)
+        variant.referenceName = referenceName
+        variant.names = []  # What's a good model to generate these?
+        variant.created = self._created
+        variant.updated = self._updated
+        variant.start = position
+        variant.end = position + 1  # SNPs only for now
+        bases = ["A", "C", "G", "T"]
+        ref = randomNumberGenerator.choice(bases)
+        variant.referenceBases = ref
+        alt = randomNumberGenerator.choice(
+            [base for base in bases if base != ref])
+        variant.alternateBases = [alt]
+        variant.calls = []
+        for _ in range(self._numCalls):
+            call = protocol.GACall()
+            # for now, the genotype is either [0,1], [1,1] or [1,0] with equal
+            # probability; probably will want to do something more
+            # sophisticated later.
+            randomChoice = randomNumberGenerator.choice(
+                [[0, 1], [1, 0], [1, 1]])
+            call.genotype = randomChoice
+            # TODO What is a reasonable model for generating these likelihoods?
+            # Are these log-scaled? Spec does not say.
+            call.genotypeLikelihood = [-100, -100, -100]
+            variant.calls.append(call)
+        return variant
+
+
+class WormtableVariantSet(AbstractVariantSet):
     """
     Class representing a single variant set backed by a wormtable directory.
     We assume that VCF data has been converted to wormtable format using
@@ -64,13 +221,13 @@ class WormtableVariantSet(VariantSet):
         Allocates a new WormtableVariantSet with the specified variantSetId
         based on the specified wormtable directory.
         """
+        super(WormtableVariantSet, self).__init__()
         self._variantSetId = variantSetId
         self._wtDir = wtDir
         self._table = wt.open_table(wtDir)
         self._chromPosIndex = self._table.open_index("CHROM+POS")
         self._chromIdIndex = self._table.open_index("CHROM+ID")
         self._sampleCols = {}
-        self._sampleNames = []
         self._infoCols = []
         self._firstSamplePosition = -1
         ctimeInMillis = int(os.path.getctime(wtDir) * 1000)
@@ -97,6 +254,9 @@ class WormtableVariantSet(VariantSet):
                     self._sampleNames.append(sampleName)
                 self._sampleCols[sampleName].append((infoName, col))
 
+    def getNumVariants(self):
+        return len(self._table)
+
     def convertInfoField(self, value):
         """
         Converts the specified value into an appropriate format for a protocol
@@ -107,37 +267,6 @@ class WormtableVariantSet(VariantSet):
         else:
             ret = [str(value)]
         return ret
-
-    @staticmethod
-    def convertPhaseset(vcfPhaseset):
-        """
-        Parses the VCF phaseset string
-        """
-        if vcfPhaseset is not None and vcfPhaseset != ".":
-            phaseset = vcfPhaseset
-        else:
-            phaseset = "*"
-        return phaseset
-
-    @staticmethod
-    def convertGenotype(vcfGenotype, vcfPhaseset):
-        """
-        Parses the VCF genotype and VCF phaseset strings
-        """
-        phaseset = None
-        if vcfGenotype is not None:
-            delim = "/"
-            if "|" in vcfGenotype:
-                delim = "|"
-                phaseset = WormtableVariantSet.convertPhaseset(vcfPhaseset)
-            if "." in vcfGenotype:
-                genotype = [-1]
-            else:
-                genotype = map(int, vcfGenotype.split(delim))
-        else:
-            genotype = [-1]
-
-        return genotype, phaseset
 
     def convertVariant(self, row, sampleRowPositions):
         """
@@ -185,8 +314,8 @@ class WormtableVariantSet(VariantSet):
                         # Missing values are not included in the info array
                         call.info[info] = self.convertInfoField(
                             row[rowPosition])
-            call.genotype, call.phaseset = self.convertGenotype(genotype,
-                                                                phaseset)
+            call.genotype, call.phaseset = convertVCFGenotype(genotype,
+                                                              phaseset)
             variant.calls.append(call)
         return variant
 
@@ -208,7 +337,11 @@ class WormtableVariantSet(VariantSet):
         else:
             readCols = self._table.columns()[:self._firstSamplePosition]
             for callSetId in callSetIds:
-                cols = [col for name, col in self._sampleCols[callSetId]]
+                try:
+                    cols = [col for name, col in self._sampleCols[callSetId]]
+                except KeyError:
+                    raise exceptions.CallSetNotInVariantSetException(
+                        callSetId, self._variantSetId)
                 readCols.extend(cols)
         # Now we get the row positions for the sample columns
         sampleRowPositions = {}
@@ -238,6 +371,33 @@ class WormtableVariantSet(VariantSet):
                 else:
                     break
 
+    def getCallSets(self, name, startPosition):
+        """
+        Returns an iterator over the specified callset name. The parameters
+        correspond to the attributes of a GASearchCallSetsReuqest object.
+        """
+        # TODO: implement name string search after semantics is clarified
+        if name is not None:
+            raise exceptions.NotImplementedException(
+                "Searching by name not supported")
+        else:
+            callSetIds = self._sampleNames[startPosition:]
+            for i in range(len(callSetIds)):
+                yield self.convertCallSet(callSetIds[i]), i+startPosition
+
+    def convertCallSet(self, callSetId):
+        """
+        Converts the specified wormtable column into a GACallSet object.
+        """
+        callSet = protocol.GACallSet()
+        callSet.created = self._creationTime
+        callSet.updated = self._updatedTime
+        # TODO clarifying between id, name and sampleID in appropriate dataset
+        callSet.id = "{0}.{1}".format(self._variantSetId, callSetId)
+        callSet.name = callSetId
+        callSet.sampleId = callSetId
+        return callSet
+
     def getMetadata(self):
         """
         Returns a list of GAVariantSetMetadata objects for this variant set.
@@ -265,43 +425,108 @@ class WormtableVariantSet(VariantSet):
         return ret
 
 
-class TabixVariantSet(VariantSet):
+def _encodeValue(value):
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value]
+    else:
+        return [str(value)]
+
+
+_nothing = object()
+
+
+def isEmptyIter(it):
+    """Return True iff the iterator is empty or exhausted"""
+    return next(it, _nothing) is _nothing
+
+
+class HtslibVariantSet(AbstractVariantSet):
     """
-    Class representing a single variant set backed by a tabix directory.
+    Class representing a single variant set backed by a directory of indexed
+    VCF or BCF files.
     """
-    def __init__(self, variantSetId, vcfPath):
+    def __init__(self, variantSetId, vcfPath, use_bcf=True):
+        super(HtslibVariantSet, self).__init__()
         self._variantSetId = variantSetId
         self._created = protocol.convertDatetime(datetime.datetime.now())
-        self._chromTabixFileMap = {}
-        for vcfFile in glob.glob(os.path.join(vcfPath, "*.vcf.gz")):
-            tabixFile = pysam.Tabixfile(vcfFile)
-            for chrom in tabixFile.contigs:
-                if chrom in self._chromTabixFileMap:
-                    raise Exception("cannot have overlapping VCF files.")
-                self._chromTabixFileMap[chrom] = tabixFile
+        self._chromFileMap = {}
+        self._metadata = None
+        for pattern in ['*.bcf', '*.vcf.gz']:
+            for filename in glob.glob(os.path.join(vcfPath, pattern)):
+                self._addFile(filename)
+
+    def _updateMetadata(self, variantFile):
+        """
+        Updates the metadata for his variant set based on the specified
+        variant file, and ensures that it is consistent with already
+        existing metadata.
+        """
+        expMsg = "Metadata of {} is not consistent".format(
+            variantFile.filename)
+        metadata = self._getMetadataFromVcf(variantFile)
+        if self._metadata is None:
+            self._metadata = metadata
+        else:
+            if self._metadata != metadata:
+                raise Exception(expMsg)
+
+    def getNumVariants(self):
+        """
+        Returns the total number of variants in this VariantSet.
+        """
+        # TODO How do we get the number of records in a VariantFile?
+        return 0
+
+    def _addFile(self, filename):
+        varFile = pysam.VariantFile(filename)
+        if varFile.index is None:
+            raise Exception("VCF/BCF files must be indexed")
+        for chrom in varFile.index:
+            # Unlike Tabix indices, CSI indices include all contigs defined
+            # in the BCF header.  Thus we must test each one to see if
+            # records exist or else they are likely to trigger spurious
+            # overlapping errors.
+            if not isEmptyIter(varFile.fetch(chrom)):
+                if chrom in self._chromFileMap:
+                    raise Exception("cannot have overlapping VCF/BCF files.")
+                self._updateMetadata(varFile)
+                self._chromFileMap[chrom] = varFile
 
     def convertVariant(self, record):
-        """
-        Converts the specified pysam VCF Record into a GA4GH GAVariant
-        object.
-        """
         variant = protocol.GAVariant()
-        record = record.split('\t')
-        position = int(record[1])
+        # N.B. record.pos is 1-based
+        #      also consider using record.start-record.stop
         variant.id = "{0}:{1}:{2}".format(self._variantSetId,
-                                          record[0], position)
-        variant.variantSetId = self._variantSetId
-        variant.referenceName = record[0]
-        variant.names = []
+                                          record.contig,
+                                          record.pos)
+        # TODO How should we populate these from VCF?
         variant.created = self._created
         variant.updated = self._created
-        variant.start = position
-        variant.end = position + 1  # TODO support non SNP variants
-        variant.referenceBases = record[3]
-        variant.alternateBases = [record[4].split(",")]
-        for j in range(9, len(record)):
+        variant.variantSetId = self._variantSetId
+        variant.referenceName = record.contig
+        if record.id is not None:
+            variant.names = record.id.split(';')
+        variant.start = record.start          # 0-based inclusive
+        variant.end = record.stop             # 0-based exclusive
+        variant.referenceBases = record.ref
+        if record.alts is not None:
+            variant.alternateBases = list(record.alts)
+        # record.filter and record.qual are also available, when supported
+        # by GAVariant.
+        for key, value in record.info.iteritems():
+            if value is not None:
+                variant.info[key] = _encodeValue(value)
+        variant.calls = []
+        for name, call in record.samples.iteritems():
             c = protocol.GACall()
-            c.genotype = record[j].split(":")[0].split("[\/\|]")
+            c.genotype = _encodeValue(call.allele_indices)
+            for key, value in record.info.iteritems():
+                if key == 'GT':
+                    c.genotype = list(call.allele_indices)
+                elif key == 'GL' and value is not None:
+                    c.genotypeLikelihood = value
+                elif value is not None:
+                    c.info[key] = _encodeValue(value)
             variant.calls.append(c)
         return variant
 
@@ -312,18 +537,57 @@ class TabixVariantSet(VariantSet):
         correspond to the attributes of a GASearchVariantsRequest object.
         """
         if variantName is not None:
-            raise NotImplementedError(
+            raise exceptions.NotImplementedException(
                 "Searching by variantName is not supported")
-        if len(callSetIds) != 0:
-            raise NotImplementedError(
+        if callSetIds is not None:
+            raise exceptions.NotImplementedException(
                 "Specifying call set ids is not supported")
-        if referenceName in self._chromTabixFileMap:
-            tabixFile = self._chromTabixFileMap[referenceName]
-            cursor = tabixFile.fetch(referenceName, startPosition, endPosition)
-            for record in cursor:
-                yield self.convertVariant(record)
+        if referenceName in self._chromFileMap:
+            varFile = self._chromFileMap[referenceName]
+            cursor = varFile.fetch(referenceName, startPosition, endPosition)
+            return itertools.imap(self.convertVariant, cursor)
+        else:
+            return []
 
     def getMetadata(self):
-        # TODO: Implement this
+        return self._metadata
+
+    def _getMetadataFromVcf(self, varFile):
+        # All the metadata is available via each varFile.header, including:
+        #    records: header records
+        #    version: VCF version
+        #    samples -- not immediately needed
+        #    contigs -- not immediately needed
+        #    filters -- not immediately needed
+        #    info
+        #    formats
+
+        def buildMetadata(
+                key, type="String", number="1", value="", id="",
+                description=""):  # All input are strings
+            metadata = protocol.GAVariantSetMetadata()
+            metadata.key = key
+            metadata.value = value
+            metadata.id = id
+            metadata.type = type
+            metadata.number = number
+            metadata.description = description
+            return metadata
+
         ret = []
+        header = varFile.header
+        ret.append(buildMetadata(key="version", value=header.version))
+        for formatKey, value in header.formats.items():
+            if formatKey != "GT":
+                ret.append(buildMetadata(
+                    key="FORMAT.{}".format(value.name), type=value.type,
+                    number="{}".format(value.number)))
+                # NOTE: description is not currently implemented as a member
+                # of VariantMetadata in pysam/cbcf.pyx
+        for infoKey, value in header.info.items():
+            ret.append(buildMetadata(
+                key="INFO.{}".format(value.name), type=value.type,
+                number="{}".format(value.number)))
+            # NOTE: description is not currently implemented as a member
+            # of VariantMetadata in pysam/cbcf.pyx
         return ret

@@ -9,15 +9,45 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-class DefaultConfig(object):
+class BaseConfig(object):
     """
     Simplest default server configuration.
     """
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2MB
+    REQUEST_VALIDATION = False
+    RESPONSE_VALIDATION = False
+    DEFAULT_PAGE_SIZE = 100
+    DATA_SOURCE = "__EMPTY__"
+
+    # Options for the simulated backend.
+    SIMULATED_BACKEND_RANDOM_SEED = 0
+    SIMULATED_BACKEND_NUM_CALLS = 1
+    SIMULATED_BACKEND_VARIANT_DENSITY = 0.5
+    SIMULATED_BACKEND_NUM_VARIANT_SETS = 1
 
 
-class TestConfig(DefaultConfig):
+class DevelopmentConfig(BaseConfig):
+    """
+    Configuration used for development.
+    """
+    DATA_SOURCE = "ga4gh-example-data"
+    DEBUG = True
+
+
+class ProductionConfig(BaseConfig):
+    """
+    Configuration that is a good basis for production deployments.
+    """
+    REQUEST_VALIDATION = True
+    # We should complain loudly if data source is not set, rather than
+    # mysteriously serve no data.
+    DATA_SOURCE = None
+
+
+class TestConfig(BaseConfig):
     """
     Configuration used in frontend unit tests.
     """
     TESTING = True
+    REQUEST_VALIDATION = True
+    RESPONSE_VALIDATION = True

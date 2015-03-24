@@ -9,119 +9,315 @@ from __future__ import unicode_literals
 
 import time
 import argparse
+import sys
 
-import ga4gh.frontend as frontend
 import ga4gh.client as client
-import ga4gh.backend as backend
 import ga4gh.protocol as protocol
-import ga4gh.datamodel.variants as variants
-import ga4gh.datamodel.expression_analysis as expression_analysis
+import ga4gh.converters as converters
+import ga4gh.frontend as frontend
+
+
+# the maximum value of a long type in avro = 2**63 - 1
+# (64 bit signed integer)
+# http://avro.apache.org/docs/1.7.7/spec.html#schema_primitive
+# AVRO_LONG_MAX = (1 << 63) - 1
+# TODO in the meantime, this is the max value wormtable can handle
+AVRO_LONG_MAX = (1 << 32) - 2
+
+
+def setCommaSeparatedAttribute(request, args, attr):
+    attribute = getattr(args, attr)
+    if attribute is not None:
+        setattr(request, attr, attribute.split(","))
+
+
+class RequestFactory(object):
+    """
+    Provides methods for easy inititalization of request objects
+    """
+    class GASearchReadsRequestGoogle(protocol.ProtocolElement):
+
+        __slots__ = ['end', 'pageSize', 'pageToken', 'readGroupIds',
+                     'referenceName', 'start']
+
+        def __init__(self):
+            self.end = None
+            self.pageSize = None
+            self.pageToken = None
+            self.readGroupIds = []
+            self.referenceName = None
+            self.start = 0
+
+    def __init__(self, args):
+        self.args = args
+        self.workarounds = getWorkarounds(args)
+
+    def usingWorkaroundsFor(self, workaround):
+        """
+        Returns true if we are using the passed-in workaround
+        """
+        return workaround in self.workarounds
+
+    def createGASearchVariantSetsRequest(self):
+        request = protocol.GASearchVariantSetsRequest()
+        setCommaSeparatedAttribute(request, self.args, 'datasetIds')
+        request.pageSize = self.args.pageSize
+        request.pageToken = None
+        return request
+
+    def createGASearchVariantsRequest(self):
+        request = protocol.GASearchVariantsRequest()
+        request.referenceName = self.args.referenceName
+        request.variantName = self.args.variantName
+        request.start = self.args.start
+        request.end = self.args.end
+        if self.usingWorkaroundsFor(client.HttpClient.workaroundGoogle):
+            request.maxCalls = self.args.maxCalls
+        if self.args.callSetIds == []:
+            request.callSetIds = []
+        elif self.args.callSetIds == '*':
+            request.callSetIds = None
+        else:
+            request.callSetIds = self.args.callSetIds.split(",")
+        setCommaSeparatedAttribute(request, self.args, 'variantSetIds')
+        return request
+
+    def createGASearchReferenceSetsRequest(self):
+        request = protocol.GASearchReferenceSetsRequest()
+        setCommaSeparatedAttribute(request, self.args, 'accessions')
+        setCommaSeparatedAttribute(request, self.args, 'md5checksums')
+        return request
+
+    def createGASearchReferencesRequest(self):
+        request = protocol.GASearchReferencesRequest()
+        setCommaSeparatedAttribute(request, self.args, 'accessions')
+        setCommaSeparatedAttribute(request, self.args, 'md5checksums')
+        return request
+
+    def createGASearchReadGroupSetsRequest(self):
+        request = protocol.GASearchReadGroupSetsRequest()
+        setCommaSeparatedAttribute(request, self.args, 'datasetIds')
+        request.name = self.args.name
+        return request
+
+    def createGASearchCallSetsRequest(self):
+        request = protocol.GASearchCallSetsRequest()
+        setCommaSeparatedAttribute(request, self.args, 'variantSetIds')
+        request.name = self.args.name
+        return request
+
+    def createGASearchReadsRequest(self):
+        request = protocol.GASearchReadsRequest()
+        if self.usingWorkaroundsFor(client.HttpClient.workaroundGoogle):
+            # google says referenceId not a valid field
+            request = self.GASearchReadsRequestGoogle()
+        setCommaSeparatedAttribute(request, self.args, 'readGroupIds')
+        request.start = self.args.start
+        request.end = self.args.end
+        request.referenceId = self.args.referenceId
+        request.referenceName = self.args.referenceName
+        return request
+
+    def createGAListReferenceBasesRequest(self):
+        request = protocol.GAListReferenceBasesRequest()
+        request.start = self.args.start
+        request.end = self.args.end
+        return request
+
+
+def getWorkarounds(args):
+    if args.workarounds is None:
+        return set()
+    else:
+        return set(args.workarounds.split(','))
+
+
+##############################################################################
+# ga2vcf
+##############################################################################
+
+
+def addOutputFileArgument(parser):
+    parser.add_argument(
+        "--outputFile", "-o", default=None,
+        help="the file to write the output to")
+
+
+def ga2vcf_main(parser=None):
+    # parse args
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="GA4GH VCF conversion tool")
+    addClientGlobalOptions(parser)
+    addOutputFileArgument(parser)
+    subparsers = parser.add_subparsers(title='subcommands',)
+    variantsSearchParser = addVariantsSearchParser(subparsers)
+    # TODO kinda ugly that we need to overload the parser with arguments
+    # to populate the searchVariantSetsRequest;
+    # this is a temporary workaround until we have getVariantSet
+    # in the protocol;
+    # also note both requests have a pageSize attribute
+    addDatasetIdsArgument(variantsSearchParser)
+    args = parser.parse_args()
+    if "runner" not in args:
+        parser.print_help()
+    else:
+        ga2vcf_run(args)
+
+
+def ga2vcf_run(args):
+    # instantiate params
+    searchVariantsRequest = RequestFactory(
+        args).createGASearchVariantsRequest()
+    searchVariantSetsRequest = RequestFactory(
+        args).createGASearchVariantSetsRequest()
+    if args.outputFile is None:
+        outputStream = sys.stdout
+    else:
+        outputStream = open(args.outputFile, 'w')
+    workarounds = getWorkarounds(args)
+    httpClient = client.HttpClient(
+        args.baseUrl, args.verbose, workarounds, args.key)
+
+    # do conversion
+    vcfConverter = converters.VcfConverter(
+        httpClient, outputStream,
+        searchVariantSetsRequest, searchVariantsRequest)
+    vcfConverter.convert()
+
+    # cleanup
+    if args.outputFile is not None:
+        outputStream.close()
+
+
+##############################################################################
+# ga2sam
+##############################################################################
+
+
+def ga2sam_main(parser=None):
+    # parse args
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="GA4GH SAM conversion tool")
+    addClientGlobalOptions(parser)
+    addReadsSearchParserArguments(parser)
+    addBinaryOutputArgument(parser)
+    addOutputFileArgument(parser)
+    args = parser.parse_args()
+    if "baseUrl" not in args:
+        parser.print_help()
+    else:
+        ga2sam_run(args)
+
+
+def ga2sam_run(args):
+    # instantiate params
+    searchReadsRequest = RequestFactory(
+        args).createGASearchReadsRequest()
+    workarounds = getWorkarounds(args)
+    httpClient = client.HttpClient(
+        args.baseUrl, args.verbose, workarounds, args.key)
+
+    # do conversion
+    samConverter = converters.SamConverter(
+        httpClient, searchReadsRequest, args.outputFile, args.binaryOutput)
+    samConverter.convert()
+
+
+def addBinaryOutputArgument(parser):
+    parser.add_argument(
+        "--binaryOutput", "-b", default=False,
+        action="store_true", help="Output a BAM (binary) file")
+
 
 ##############################################################################
 # Server
 ##############################################################################
 
 
-def server_main(parser=None):
-    if parser is None:
-        parser = argparse.ArgumentParser(
-            description="GA4GH reference server")
-    # Add global options
+def addGlobalOptions(parser):
     parser.add_argument(
         "--port", "-P", default=8000, type=int,
         help="The port to listen on")
     parser.add_argument(
-        "--config", "-C", default='DefaultConfig', type=str,
+        "--config", "-c", default='DevelopmentConfig', type=str,
         help="The configuration to use")
     parser.add_argument(
-        "--config-file", "-F", type=str,
+        "--config-file", "-f", type=str, default=None,
         help="The configuration file to use")
+    parser.add_argument(
+        "--dont-use-reloader", default=False, action="store_true",
+        help="Don't use the flask reloader")
 
-    subparsers = parser.add_subparsers(title='subcommands',)
 
-    # help
-    helpParser = subparsers.add_parser(
-        "help",
-        description="ga4gh_server help",
-        help="show this help message and exit")
-    # Wormtable backend
-    wtbParser = subparsers.add_parser(
-        "wormtable",
-        description="Serve the API using a wormtable based backend.",
-        help="Serve data from tables.")
-    wtbParser.add_argument(
-        "dataDir",
-        help="The directory containing the wormtables to be served.")
-    wtbParser.set_defaults(variantSetClass=variants.WormtableVariantSet)
-    # Tabix
-    tabixParser = subparsers.add_parser(
-        "tabix",
-        description="Serve the API using a tabix based backend.",
-        help="Serve data from Tabix indexed VCFs")
-    tabixParser.add_argument(
-        "dataDir",
-        help="The directory containing VCFs")
-    tabixParser.set_defaults(variantSetClass=variants.TabixVariantSet)
-    # Expression Analysis
-    eaParser = subparsers.add_parser(
-        "rnaseq",
-        description="Serve the API using an RNAseq based backend.",
-        help="Serve data from RNAseq datafiles.")
-    eaParser.add_argument(
-        "dataDir",
-        help="The directory containing the RNAseq datafiles.")
-    eaParser.set_defaults(expressionAnalysisClass=expression_analysis.RNASeqResult)
-
+def server_main(parser=None):
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="GA4GH reference server")
+    addGlobalOptions(parser)
     args = parser.parse_args()
-    if "expressionAnalysisClass" in args:
-        frontend.configure(args.config, args.config_file)
-        frontend.app.backend = backend.Backend(
-            args.dataDir, expressionAnalysisClass=args.expressionAnalysisClass)
-        frontend.app.run(host="0.0.0.0", port=args.port, debug=True)
-    elif "variantSetClass" in args:
-        frontend.configure(args.config, args.config_file)
-        frontend.app.backend = backend.Backend(
-            args.dataDir, variantSetClass=args.variantSetClass)
-        frontend.app.run(host="0.0.0.0", port=args.port, debug=True)
-    else:
-        parser.print_help()
+    frontend.configure(args.config_file, args.config)
+    frontend.app.run(
+        host="0.0.0.0", port=args.port, debug=True,
+        use_reloader=not args.dont_use_reloader)
+
 
 ##############################################################################
 # Client
 ##############################################################################
 
 
-class AbstractSearchRunner(object):
+class AbstractQueryRunner(object):
+    """
+    Abstract base class for runner classes
+    """
+    def __init__(self, args):
+        self._workarounds = getWorkarounds(args)
+        self._key = args.key
+        self._verbosity = args.verbose
+        self._httpClient = client.HttpClient(
+            args.baseUrl, args.verbose, self._workarounds, self._key)
+
+
+class AbstractGetRunner(AbstractQueryRunner):
+    """
+    Abstract base class for get runner classes
+    """
+    def __init__(self, args):
+        super(AbstractGetRunner, self).__init__(args)
+        self._id = args.id
+        self._httpClient = client.HttpClient(
+            args.baseUrl, args.verbose, self._workarounds, self._key)
+
+    def _run(self, method):
+        response = method(self._id)
+        print(response.id)
+
+
+class AbstractSearchRunner(AbstractQueryRunner):
     """
     Abstract base class for search runner classes
     """
     def __init__(self, args):
-        self._workarounds = set(args.workarounds.split(','))
-        self._key = args.key
+        super(AbstractSearchRunner, self).__init__(args)
 
-    def usingWorkaroundsFor(self, workaround):
-        """
-        Returns true if we are using the passed-in workaround
-        """
-        return workaround in self._workarounds
-
-    def setHttpClient(self, request, args):
+    def _setRequest(self, request, args):
         """
         Sets the _httpClient and other common attributes
         """
-        request.pageSize = args.pageSize
+        self._minimalOutput = args.minimalOutput
+        if 'pageSize' in args:
+            # GAListReferenceBasesRequest does not have a pageSize attr
+            request.pageSize = args.pageSize
         self._request = request
-        self._verbosity = args.verbose
-        self._httpClient = client.HTTPClient(
-            args.baseUrl, args.verbose, self._workarounds, self._key)
 
-    def _run(self, methodName, attrName=None):
+    def _run(self, method, attrName=None):
         """
         Runs the request given methodname and prints out
         the each result's attrName attribute if it is provided.
         If not, prints each entire result object.
         """
-        method = getattr(self._httpClient, methodName)
         results = method(self._request)
         for result in results:
             if attrName is None:
@@ -131,128 +327,140 @@ class AbstractSearchRunner(object):
                 print(attr)
 
 
-class VariantSetSearchRunner(AbstractSearchRunner):
+class SearchVariantSetsRunner(AbstractSearchRunner):
     """
     Runner class for the variantsets/search method.
     """
     def __init__(self, args):
-        super(VariantSetSearchRunner, self).__init__(args)
-        request = protocol.GASearchVariantSetsRequest()
-        setCommaSeparatedAttribute(request, args, 'datasetIds')
-        self.setHttpClient(request, args)
+        super(SearchVariantSetsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchVariantSetsRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchVariantSets', 'datasetId')
+        self._run(self._httpClient.searchVariantSets, 'datasetId')
 
 
-class VariantSearchRunner(AbstractSearchRunner):
+class SearchVariantsRunner(AbstractSearchRunner):
     """
     Runner class for the variants/search method.
     """
     def __init__(self, args):
-        super(VariantSearchRunner, self).__init__(args)
-        request = protocol.GASearchVariantsRequest()
-        request.referenceName = args.referenceName
-        request.variantName = args.variantName
-        request.start = args.start
-        request.end = args.end
-        if self.usingWorkaroundsFor(client.HTTPClient.workaroundGoogle):
-            request.maxCalls = args.maxCalls
-        if args.callSetIds == []:
-            request.callSetIds = []
-        elif args.callSetIds == '*':
-            request.callSetIds = None
+        super(SearchVariantsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchVariantsRequest()
+        # if no variantSets have been specified, send a request to
+        # the server to grab all variantSets and then continue
+        if args.variantSetIds is None:
+            variantSetsRequest = protocol.GASearchVariantSetsRequest()
+            response = self._httpClient.searchVariantSets(variantSetsRequest)
+            variantSetIds = [variantSet.id for variantSet in response]
+            request.variantSetIds = variantSetIds
         else:
-            request.callSetIds = args.callSetIds.split(",")
-        setCommaSeparatedAttribute(request, args, 'variantSetIds')
-        self.setHttpClient(request, args)
+            setCommaSeparatedAttribute(request, args, 'variantSetIds')
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchVariants', 'id')
+        if self._minimalOutput:
+            self._run(self._httpClient.searchVariants, 'id')
+        else:
+            results = self._httpClient.searchVariants(self._request)
+            for result in results:
+                self.printVariant(result)
+
+    def printVariant(self, variant):
+        """
+        Prints out the specified GAVariant object in a VCF-like form.
+        """
+        print(
+            variant.id, variant.variantSetId, variant.names,
+            variant.referenceName, variant.start, variant.end,
+            variant.referenceBases, variant.alternateBases,
+            sep="\t", end="\t")
+        for key, value in variant.info.items():
+            print(key, value, sep="=", end=";")
+        print("\t", end="")
+        for c in variant.calls:
+            print(
+                c.callSetId, c.genotype, c.genotypeLikelihood, c.info,
+                c.phaseset, sep=":", end="\t")
+        print()
 
 
-class ReferenceSetSearchRunner(AbstractSearchRunner):
+class SearchReferenceSetsRunner(AbstractSearchRunner):
     """
     Runner class for the referencesets/search method.
     """
     def __init__(self, args):
-        super(ReferenceSetSearchRunner, self).__init__(args)
-        request = protocol.GASearchReferenceSetsRequest()
-        setCommaSeparatedAttribute(request, args, 'accessions')
-        setCommaSeparatedAttribute(request, args, 'md5checksums')
-        if self.usingWorkaroundsFor(client.HTTPClient.workaroundGoogle):
-            # google says assemblyId not a valid field
-            del request.__dict__['assemblyId']
-        self.setHttpClient(request, args)
+        super(SearchReferenceSetsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchReferenceSetsRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchReferenceSets', 'id')
+        self._run(self._httpClient.searchReferenceSets, 'id')
 
 
-class ReferencesSearchRunner(AbstractSearchRunner):
+class SearchReferencesRunner(AbstractSearchRunner):
     """
     Runner class for the references/search method
     """
     def __init__(self, args):
-        super(ReferencesSearchRunner, self).__init__(args)
-        request = protocol.GASearchReferencesRequest()
-        setCommaSeparatedAttribute(request, args, 'accessions')
-        setCommaSeparatedAttribute(request, args, 'md5checksums')
-        self.setHttpClient(request, args)
+        super(SearchReferencesRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchReferencesRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchReferences', 'id')
+        self._run(self._httpClient.searchReferences, 'id')
 
 
-class ReadGroupSetsSearchRunner(AbstractSearchRunner):
+class SearchReadGroupSetsRunner(AbstractSearchRunner):
     """
     Runner class for the readgroupsets/search method
     """
     def __init__(self, args):
-        super(ReadGroupSetsSearchRunner, self).__init__(args)
-        request = protocol.GASearchReadGroupSetsRequest()
-        setCommaSeparatedAttribute(request, args, 'datasetIds')
-        request.name = args.name
-        self.setHttpClient(request, args)
+        super(SearchReadGroupSetsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchReadGroupSetsRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchReadGroupSets', 'id')
+        self._run(self._httpClient.searchReadGroupSets, 'id')
 
 
-class CallSetsSearchRunner(AbstractSearchRunner):
+class SearchCallSetsRunner(AbstractSearchRunner):
     """
     Runner class for the callsets/search method
     """
     def __init__(self, args):
-        super(CallSetsSearchRunner, self).__init__(args)
-        request = protocol.GASearchCallSetsRequest()
-        setCommaSeparatedAttribute(request, args, 'variantSetIds')
-        request.name = args.name
-        self.setHttpClient(request, args)
+        super(SearchCallSetsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchCallSetsRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchCallSets', 'id')
+        self._run(self._httpClient.searchCallSets, 'id')
 
 
-class ReadsSearchRunner(AbstractSearchRunner):
+class SearchReadsRunner(AbstractSearchRunner):
     """
     Runner class for the reads/search method
     """
+    class GASearchReadsRequestGoogle(protocol.ProtocolElement):
+
+        __slots__ = ['end', 'pageSize', 'pageToken', 'readGroupIds',
+                     'referenceName', 'start']
+
+        def __init__(self):
+            self.end = None
+            self.pageSize = None
+            self.pageToken = None
+            self.readGroupIds = []
+            self.referenceName = None
+            self.start = 0
+
     def __init__(self, args):
-        super(ReadsSearchRunner, self).__init__(args)
-        request = protocol.GASearchReadsRequest()
-        setCommaSeparatedAttribute(request, args, 'readGroupIds')
-        request.start = args.start
-        request.end = args.end
-        request.referenceId = args.referenceId
-        request.referenceName = args.referenceName
-        if self.usingWorkaroundsFor(client.HTTPClient.workaroundGoogle):
-            # google says referenceId not a valid field
-            del request.__dict__['referenceId']
-        self.setHttpClient(request, args)
+        super(SearchReadsRunner, self).__init__(args)
+        request = RequestFactory(args).createGASearchReadsRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchReads', 'id')
+        self._run(self._httpClient.searchReads, 'id')
 
 
 class ExpressionAnalysisSearchRunner(AbstractSearchRunner):
@@ -275,6 +483,45 @@ class ExpressionAnalysisSearchRunner(AbstractSearchRunner):
 
 
 class BenchmarkRunner(VariantSearchRunner):
+class ListReferenceBasesRunner(AbstractSearchRunner):
+    """
+    Runner class for the references/{id}/bases method
+    """
+    def __init__(self, args):
+        super(ListReferenceBasesRunner, self).__init__(args)
+        request = RequestFactory(args).createGAListReferenceBasesRequest()
+        self._id = args.id
+        self._setRequest(request, args)
+
+    def run(self):
+        method = self._httpClient.listReferenceBases
+        for base in method(self._request, self._id):
+            print(base.sequence)
+
+
+class GetReferenceSetRunner(AbstractGetRunner):
+    """
+    Runner class for the referencesets/{id} method
+    """
+    def __init__(self, args):
+        super(GetReferenceSetRunner, self).__init__(args)
+
+    def run(self):
+        self._run(self._httpClient.getReferenceSet)
+
+
+class GetReferenceRunner(AbstractGetRunner):
+    """
+    Runner class for the references/{id} method
+    """
+    def __init__(self, args):
+        super(GetReferenceRunner, self).__init__(args)
+
+    def run(self):
+        self._run(self._httpClient.getReference)
+
+
+class BenchmarkRunner(SearchVariantsRunner):
     """
     Runner class for the client side benchmarking. This is intended to give
     rough figures on protocol throughput on the server side over various
@@ -306,7 +553,7 @@ def addVariantSearchOptions(parser):
     """
     addVariantSetIdsArgument(parser)
     parser.add_argument(
-        "--referenceName", "-r", default="chrSim",
+        "--referenceName", "-r", default="1",
         help="Only return variants on this reference.")
     parser.add_argument(
         "--variantName", "-n", default=None,
@@ -329,7 +576,7 @@ def addVariantSearchOptions(parser):
 
 def addVariantSetIdsArgument(parser):
     parser.add_argument(
-        "--variantSetIds", "-v",
+        "--variantSetIds", "-V", default=None,
         help="The variant set id(s) to search over")
 
 
@@ -341,8 +588,17 @@ def addStartArgument(parser):
 
 def addEndArgument(parser):
     parser.add_argument(
-        "--end", "-e", default=1, type=int,
+        "--end", "-e", default=AVRO_LONG_MAX, type=int,
         help="The end of the search range (exclusive).")
+
+
+def addIdArgument(parser):
+    parser.add_argument("--id", default=None, help="The id of the object")
+
+
+def addGetArguments(parser):
+    addIdArgument(parser)
+    addUrlArgument(parser)
 
 
 def addUrlArgument(parser):
@@ -382,121 +638,136 @@ def addNameArgument(parser):
         help="The name to search over")
 
 
-def setCommaSeparatedAttribute(request, args, attr):
-    attribute = getattr(args, attr)
-    if attribute is not None:
-        setattr(request, attr, attribute.split(","))
-
-
-def client_main(parser=None):
-    if parser is None:
-        parser = argparse.ArgumentParser(
-            description="GA4GH reference client")
-    # Add global options
+def addClientGlobalOptions(parser):
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument(
-        "--workarounds", "-w", default='', help="The workarounds to use")
+        "--workarounds", "-w", default=None, help="The workarounds to use")
     parser.add_argument(
         "--key", "-k", help="The auth key to use")
-    subparsers = parser.add_subparsers(title='subcommands',)
+    parser.add_argument(
+        "--minimalOutput", "-O", default=False,
+        help="Use minimal output; default False",
+        action='store_true')
 
-    # help
-    helpParser = subparsers.add_parser(
+
+def addHelpParser(subparsers):
+    parser = subparsers.add_parser(
         "help", description="ga4gh_client help",
         help="show this help message and exit")
+    return parser
 
-    # benchmarking
-    bmParser = subparsers.add_parser(
+
+def addBenchmarkingParser(subparsers):
+    parser = subparsers.add_parser(
         "benchmark",
         description="Run simple benchmarks on the various methods",
         help="Benchmark server performance")
-    bmParser.set_defaults(runner=BenchmarkRunner)
-    addUrlArgument(bmParser)
-    addVariantSearchOptions(bmParser)
+    parser.set_defaults(runner=BenchmarkRunner)
+    addUrlArgument(parser)
+    addVariantSearchOptions(parser)
+    return parser
 
-    # variants/search
-    vsParser = subparsers.add_parser(
+
+def addVariantsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "variants-search",
         description="Search for variants",
         help="Search for variants.")
-    vsParser.set_defaults(runner=VariantSearchRunner)
-    addUrlArgument(vsParser)
-    addVariantSearchOptions(vsParser)
+    parser.set_defaults(runner=SearchVariantsRunner)
+    addUrlArgument(parser)
+    addVariantSearchOptions(parser)
+    return parser
 
-    # variantsets/search
-    vssParser = subparsers.add_parser(
+
+def addVariantSetsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "variantsets-search",
         description="Search for variantSets",
         help="Search for variantSets.")
-    vssParser.set_defaults(runner=VariantSetSearchRunner)
-    addUrlArgument(vssParser)
-    addPageSizeArgument(vssParser)
-    addDatasetIdsArgument(vssParser)
+    parser.set_defaults(runner=SearchVariantSetsRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addDatasetIdsArgument(parser)
+    return parser
 
-    # referencesets/search
-    rssParser = subparsers.add_parser(
+
+def addReferenceSetsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "referencesets-search",
         description="Search for referenceSets",
         help="Search for referenceSets")
-    rssParser.set_defaults(runner=ReferenceSetSearchRunner)
-    addUrlArgument(rssParser)
-    addPageSizeArgument(rssParser)
-    addAccessionsArgument(rssParser)
-    addMd5ChecksumsArgument(rssParser)
-    rssParser.add_argument(
+    parser.set_defaults(runner=SearchReferenceSetsRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addAccessionsArgument(parser)
+    addMd5ChecksumsArgument(parser)
+    parser.add_argument(
         "--assemblyId",
         help="The assembly id to search over")
+    return parser
 
-    # references/search
-    rsParser = subparsers.add_parser(
+
+def addReferencesSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "references-search",
         description="Search for references",
         help="Search for references")
-    rsParser.set_defaults(runner=ReferencesSearchRunner)
-    addUrlArgument(rsParser)
-    addPageSizeArgument(rsParser)
-    addAccessionsArgument(rsParser)
-    addMd5ChecksumsArgument(rsParser)
+    parser.set_defaults(runner=SearchReferencesRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addAccessionsArgument(parser)
+    addMd5ChecksumsArgument(parser)
+    return parser
 
-    # readgroupsets/search
-    rgsParser = subparsers.add_parser(
+
+def addReadGroupSetsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "readgroupsets-search",
         description="Search for readGroupSets",
         help="Search for readGroupSets")
-    rgsParser.set_defaults(runner=ReadGroupSetsSearchRunner)
-    addUrlArgument(rgsParser)
-    addPageSizeArgument(rgsParser)
-    addDatasetIdsArgument(rgsParser)
-    addNameArgument(rgsParser)
+    parser.set_defaults(runner=SearchReadGroupSetsRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addDatasetIdsArgument(parser)
+    addNameArgument(parser)
+    return parser
 
-    # callsets/search
-    csParser = subparsers.add_parser(
+
+def addCallsetsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "callsets-search",
         description="Search for callSets",
         help="Search for callSets")
-    csParser.set_defaults(runner=CallSetsSearchRunner)
-    addUrlArgument(csParser)
-    addPageSizeArgument(csParser)
-    addNameArgument(csParser)
-    addVariantSetIdsArgument(csParser)
+    parser.set_defaults(runner=SearchCallSetsRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addNameArgument(parser)
+    addVariantSetIdsArgument(parser)
+    return parser
 
-    # reads/search
-    rParser = subparsers.add_parser(
+
+def addReadsSearchParser(subparsers):
+    parser = subparsers.add_parser(
         "reads-search",
         description="Search for reads",
         help="Search for reads")
-    rParser.set_defaults(runner=ReadsSearchRunner)
-    addUrlArgument(rParser)
-    addPageSizeArgument(rParser)
-    addStartArgument(rParser)
-    addEndArgument(rParser)
-    rParser.add_argument(
+    parser.set_defaults(runner=SearchReadsRunner)
+    addReadsSearchParserArguments(parser)
+    return parser
+
+
+def addReadsSearchParserArguments(parser):
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    addStartArgument(parser)
+    addEndArgument(parser)
+    parser.add_argument(
         "--readGroupIds", default=None,
         help="The readGroupIds to search over")
-    rParser.add_argument(
+    parser.add_argument(
         "--referenceId", default=None,
         help="The referenceId to search over")
-    rParser.add_argument(
+    parser.add_argument(
         "--referenceName", default=None,
         help="The referenceName to search over")
 
@@ -511,6 +782,55 @@ def client_main(parser=None):
     eaParser.add_argument(
         "--expressionAnalysisId", default=None,
         help="The expressionAnalysisId to search over")
+
+
+def addReferenceSetsGetParser(subparsers):
+    parser = subparsers.add_parser(
+        "referencesets-get",
+        description="Get a referenceset",
+        help="Get a referenceset")
+    parser.set_defaults(runner=GetReferenceSetRunner)
+    addGetArguments(parser)
+
+
+def addReferencesGetParser(subparsers):
+    parser = subparsers.add_parser(
+        "references-get",
+        description="Get a reference",
+        help="Get a reference")
+    parser.set_defaults(runner=GetReferenceRunner)
+    addGetArguments(parser)
+
+
+def addReferencesBasesListParser(subparsers):
+    parser = subparsers.add_parser(
+        "references-list-bases",
+        description="List bases of a reference",
+        help="List bases of a reference")
+    parser.set_defaults(runner=ListReferenceBasesRunner)
+    addGetArguments(parser)
+    addStartArgument(parser)
+    addEndArgument(parser)
+
+
+def client_main(parser=None):
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="GA4GH reference client")
+    addClientGlobalOptions(parser)
+    subparsers = parser.add_subparsers(title='subcommands',)
+    addHelpParser(subparsers)
+    addBenchmarkingParser(subparsers)
+    addVariantsSearchParser(subparsers)
+    addVariantSetsSearchParser(subparsers)
+    addReferenceSetsSearchParser(subparsers)
+    addReferencesSearchParser(subparsers)
+    addReadGroupSetsSearchParser(subparsers)
+    addCallsetsSearchParser(subparsers)
+    addReadsSearchParser(subparsers)
+    addReferenceSetsGetParser(subparsers)
+    addReferencesGetParser(subparsers)
+    addReferencesBasesListParser(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

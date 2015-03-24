@@ -17,10 +17,9 @@ import subprocess
 
 import wormtable as wt
 
-import tests
+import tests.utils as utils
 import ga4gh.backend as backend
 import ga4gh.protocol as protocol
-import ga4gh.datamodel.variants as variants
 
 
 class WormtableTestFixture(object):
@@ -31,14 +30,20 @@ class WormtableTestFixture(object):
     """
     def __init__(self):
         self.dataDir = tempfile.mkdtemp(prefix="ga4gh_wt")
+        self.variantsDir = os.path.join(self.dataDir, "variants")
+        self.referencesDir = os.path.join(self.dataDir, "references")
+        self.readsDir = os.path.join(self.dataDir, "reads")
+        subdirs = [self.variantsDir, self.referencesDir, self.readsDir]
+        for subdir in subdirs:
+            os.mkdir(subdir)
 
     def convertVariantSet(self, vcfFile):
         """
         Converts the specified VCF file into wormtable format, storing it
         the data directory.
         """
-        variantSetid = vcfFile.split("/")[-1].split(".")[0]
-        wtDir = os.path.join(self.dataDir, variantSetid)
+        variantSetid = vcfFile.split("/")[-1].split(".")[0] + '.wt'
+        wtDir = os.path.join(self.variantsDir, variantSetid)
         # convert the vcf to wormtable format.
         cmd = ["vcf2wt", "-q", vcfFile, wtDir]
         subprocess.check_call(cmd)
@@ -49,7 +54,7 @@ class WormtableTestFixture(object):
             subprocess.check_call(cmd)
 
     def setUp(self):
-        for filename in glob.glob("tests/data/*.vcf.gz"):
+        for filename in glob.glob("tests/data/variants/example_*/*.vcf.gz"):
             self.convertVariantSet(filename)
 
     def tearDown(self):
@@ -93,16 +98,17 @@ class TestWormtableBackend(unittest.TestCase):
     def setUp(self):
         global _wormtableTestFixture
         self._dataDir = _wormtableTestFixture.dataDir
+        self._variantsDir = _wormtableTestFixture.variantsDir
         self._tables = {}
         self._chromIndexes = {}
         self._chromPosIndexes = {}
-        for relativePath in os.listdir(self._dataDir):
-            table = wt.open_table(os.path.join(self._dataDir, relativePath))
+        for relativePath in os.listdir(self._variantsDir):
+            table = wt.open_table(
+                os.path.join(self._variantsDir, relativePath))
             self._tables[relativePath] = table
             self._chromIndexes[relativePath] = table.open_index("CHROM")
             self._chromPosIndexes[relativePath] = table.open_index("CHROM+POS")
-        self._backend = backend.Backend(
-            self._dataDir, variants.WormtableVariantSet)
+        self._backend = backend.FileSystemBackend(self._dataDir)
 
     def tearDown(self):
         for table in self._tables.values():
@@ -119,8 +125,8 @@ class TestWormtableBackend(unittest.TestCase):
         request.pageSize = pageSize
         while notDone:
             # TODO validate the response there.
-            responseStr = searchMethod(request.toJSONString())
-            response = ResponseClass.fromJSONString(responseStr)
+            responseStr = searchMethod(request.toJsonString())
+            response = ResponseClass.fromJsonString(responseStr)
             objectList = getattr(response, listMember)
             self.assertLessEqual(len(objectList), pageSize)
             for obj in objectList:
@@ -138,8 +144,14 @@ class TestWormtableBackend(unittest.TestCase):
             request, pageSize, self._backend.searchVariantSets,
             protocol.GASearchVariantSetsResponse, "variantSets")
 
+    def getVariantSetIds(self):
+        """
+        Return all variantSetIds.
+        """
+        return [variantSet.id for variantSet in self.getVariantSets()]
+
     def getVariants(
-            self, variantSetIds, referenceName, start=0, end=2**32,
+            self, variantSetIds, referenceName, start=0, end=2 ** 32,
             pageSize=100, callSetIds=[]):
         """
         Returns an iterator over the specified list of variants, abstracting
@@ -154,6 +166,16 @@ class TestWormtableBackend(unittest.TestCase):
         return self.resultIterator(
             request, pageSize, self._backend.searchVariants,
             protocol.GASearchVariantsResponse, "variants")
+
+    def getCallSets(self, variantSetId, pageSize=100):
+        """
+        Returns an iterator over the callsets in a specified variant set.
+        """
+        request = protocol.GASearchCallSetsRequest()
+        request.variantSetIds = [variantSetId]
+        return self.resultIterator(
+            request, pageSize, self._backend.searchCallSets,
+            protocol.GASearchCallSetsResponse, "callSets")
 
     def getReferenceNames(self, variantSetId):
         """
@@ -174,7 +196,7 @@ class TestWormtableBackend(unittest.TestCase):
         return commonNames
 
     def getWormtableVariants(
-            self, variantSetIds, referenceName, start=0, end=2**32,
+            self, variantSetIds, referenceName, start=0, end=2 ** 32,
             callSetIds=[]):
         """
         Returns the rows from the table corresponding to the specified values.
@@ -212,16 +234,16 @@ class TestWormtableBackend(unittest.TestCase):
         last = index.max_key(referenceName)
         return first[1], last[1]
 
-    def getCallSetIds(self, variantSetId):
+    def getWormtableCallSetIds(self, variantSetId):
         """
         Returns the set of callSetIds derived from the wormtable header.
         """
         table = self._tables[variantSetId]
-        callSetIds = set()
+        callSetIds = list()
         for col in table.columns()[8:]:  # skip VCF fixed cols
-            name = col.get_name()
-            if not name.startswith("INFO"):
-                callSetIds.add(name.split(".")[0])
+            name = col.get_name().split(".")[0]
+            if not name.startswith("INFO") and name not in callSetIds:
+                callSetIds.append(name.split(".")[0])
         return callSetIds
 
 
@@ -252,168 +274,6 @@ class TestVariants(TestWormtableBackend):
     """
     Tests the searchVariants end point.
     """
-
-    def testGenotypeUnphasedNoCall(self):
-        """
-        Test genotype conversion for a genotype with no call
-        """
-        g = "./."
-        p = "0"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypeUnphasedSecondHalfCall(self):
-        """
-        Test genotype converstion for a half call where only the second half
-        is called.
-        """
-        g = "./0"
-        p = "25"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypeUnphasedFirstHalfCall(self):
-        """
-        Test genotype conversion for a half call where only the first half
-        is called
-        """
-        g = "0/."
-        p = ""
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypeUnphasedRefRef(self):
-        """
-        Test genotype conversion for an unphased genotype with both halves
-        of a diploid call as the reference allele
-        """
-        g = "0/0"
-        p = "3124234"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [0, 0])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypeUnphasedAltRef(self):
-        """
-        Test genotype conversion for an unphased genotype with the first half
-        an alternate allele, and the second half the reference allele
-        """
-        g = "1/0"
-        p = "-56809"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [1, 0])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypeUnphasedRefAlt(self):
-        """
-        Test genotype converstion for an unphased genotype with the first half
-        the reference allele, and the sencond half an alternate allele.
-        """
-        g = "0/1"
-        p = "134965"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [0, 1])
-        self.assertEqual(phaseset, None)
-
-    def testGenotypePhasedNoCall(self):
-        """
-        Test genotype conversion for a phased genotype with no call
-        """
-        g = ".|."
-        p = "36"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, "36")
-
-    def testGenotypePhasedSecondHalfCall(self):
-        """
-        Test genotype conversion for a half called phased genotype with only
-        the second half called.
-        """
-        g = ".|0"
-        p = "45032"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, "45032")
-
-    def testGenotypePhasedFirstHalfCall(self):
-        """
-        Test genotype conversion for a half called phased genotype with only
-        the first half called
-        """
-        g = "0|."
-        p = "645"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [-1])
-        self.assertEqual(phaseset, "645")
-
-    def testGenotypePhasedRefRef(self):
-        """
-        Test genotype conversion for a phased reference genotype with no
-        phaseset information
-        """
-        g = "0|0"
-        p = "."
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [0, 0])
-        self.assertEqual(phaseset, "*")
-
-    def testGenotypePhasedRefAlt(self):
-        """
-        Test genotype conversion for a phased genotype with one reference and
-        one alternate allele
-        """
-        g = "0|1"
-        p = "45"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [0, 1])
-        self.assertEqual(phaseset, "45")
-
-    def testGenotypePhasedAltAlt(self):
-        """
-        Test genotype conversion for a phased genotype with two alternate
-        alleles
-        """
-        g = "1|1"
-        p = "."
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [1, 1])
-        self.assertEqual(phaseset, "*")
-
-    def testGenotypePhasedDiffAlt(self):
-        """
-        Test genotype conversion when the genotype contains two different
-        alternate alleles
-        """
-        g = "2|1"
-        p = "245624"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [2, 1])
-        self.assertEqual(phaseset, "245624")
-
-    def testPhasesetZero(self):
-        """
-        Test genotype conversion when the phaseset is zero
-        """
-        g = "3|0"
-        p = "0"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [3, 0])
-        self.assertEqual(phaseset, "0")
-
-    def testGenotypeHaploid(self):
-        """
-        Test genotype conversion of a haploid genotype
-        """
-        g = "1"
-        p = "376"
-        genotype, phaseset = variants.WormtableVariantSet.convertGenotype(g, p)
-        self.assertEqual(genotype, [1])
-        self.assertEqual(phaseset, None)
-
     def verifyGenotype(self, call, vcfString):
         """
         Verifies the specified Call object has the correct interpretation of
@@ -529,7 +389,7 @@ class TestVariants(TestWormtableBackend):
         for variantSet in self.getVariantSets():
             for referenceName in self.getReferenceNames(variantSet.id):
                 self.verifySearchVariants(
-                    [variantSet.id], referenceName, 0, 2**32)
+                    [variantSet.id], referenceName, 0, 2 ** 32)
 
     def testSearchVariantSlices(self):
         for variantSet in self.getVariantSets():
@@ -561,12 +421,12 @@ class TestVariants(TestWormtableBackend):
 
     def testSearchByCallSetIds(self):
         for variantSet in self.getVariantSets():
-            callSetIds = self.getCallSetIds(variantSet.id)
+            callSetIds = self.getWormtableCallSetIds(variantSet.id)
             # limit the subsets we check over to some small value.
-            for subset in tests.powerset(callSetIds, 20):
+            for subset in utils.powerset(callSetIds, 20):
                 for referenceName in self.getReferenceNames(variantSet.id):
                     self.verifySearchByCallSetIds(
-                        variantSet.id, referenceName, 0, 2**32, subset)
+                        variantSet.id, referenceName, 0, 2 ** 32, subset)
 
     def testUniqueIds(self):
         ids = set()
@@ -578,12 +438,85 @@ class TestVariants(TestWormtableBackend):
                     ids.add(variant.id)
 
     def testAcrossVariantSets(self):
-        allVariantSets = [
-            variantSet.id for variantSet in self.getVariantSets()]
+        allVariantSets = self.getVariantSetIds()
         for permLen in range(1, len(allVariantSets) + 1):
             for variantSets in itertools.permutations(allVariantSets, permLen):
                 for referenceName in self.getCommonRefNames(variantSets):
                     for pageSize in [1, 2, 3, 5, 1000]:
                         self.verifySearchVariants(
-                            variantSets, referenceName, 0, 2**32,
+                            variantSets, referenceName, 0, 2 ** 32,
                             pageSize=pageSize)
+
+
+class TestCallSets(TestWormtableBackend):
+    """
+    Tests the searchCallSets end point.
+    """
+
+    def verifySearchCallSets(self, variantSetId, pageSize=1000):
+        """
+        Verifies callsets queries based on specified variant set ids.
+        """
+        ga4ghCallSets = list(self.getCallSets(variantSetId))
+        wormtableCallSets = list(self.getWormtableCallSetIds(variantSetId))
+        self.assertEqual(len(ga4ghCallSets), len(wormtableCallSets))
+        for ga4ghCallSet, wormtableCallSet in zip(
+                ga4ghCallSets, wormtableCallSets):
+            self.verifyCallSetsEqual(
+                variantSetId, ga4ghCallSet, wormtableCallSet)
+
+    def verifyCallSetsEqual(
+            self, variantSetId, ga4ghCallSet, wormtableCallSet):
+        """
+        Verifies that the ga4ghCallSet Ojbect is equal to the wormtable column.
+        """
+        self.assertEqual(ga4ghCallSet.id,
+                         "{0}.{1}".format(variantSetId, wormtableCallSet))
+        self.assertEqual(ga4ghCallSet.name, wormtableCallSet)
+        self.assertEqual(ga4ghCallSet.sampleId, wormtableCallSet)
+
+    def testSearchAllCallSets(self):
+        for variantSet in self.getVariantSets():
+            self.verifySearchCallSets(variantSet.id)
+
+    def testSearchByCallSetIds(self):
+        # TODO implement after schemas on name string search is determined
+        pass
+
+    def testCallSetIds(self):
+        # verify that callSetIds are equal to sample columns in wormtable
+        variantSetIdMap = self._backend.getVariantSetIdMap()
+        for variantSetId in self.getVariantSetIds():
+            callSetIds = set(self.getWormtableCallSetIds(variantSetId))
+            variantSets = variantSetIdMap[variantSetId]
+            sampleNames = set(variantSets.getSampleNames())
+            self.assertEqual(callSetIds, sampleNames)
+            self.assertIsNotNone(callSetIds)
+            self.assertIsNotNone(sampleNames)
+
+    def testUniqueCallSetIds(self):
+        # verify that all callSetIds are unique
+        for variantSetId in self.getVariantSetIds():
+            callSetIds = set()
+            for callSetId in self.getWormtableCallSetIds(variantSetId):
+                self.assertTrue(callSetId not in callSetIds)
+                callSetIds.add(callSetId)
+
+    def testVariantSetIds(self):
+        # test the VariantSetId field of GACallSet object is correct
+        allCallSetIdMap = dict()
+        for variantSetId in self.getVariantSetIds():
+            for callSetId in self.getWormtableCallSetIds(variantSetId):
+                if callSetId not in allCallSetIdMap:
+                    allCallSetIdMap[callSetId] = []
+                allCallSetIdMap[callSetId].append(variantSetId)
+        wormtableCallSetIdMap = self._backend.getCallSetIdMap()
+        # can't just call assertEqual on allCallSetIdMap and
+        # wormtableCallSetIdMap since their values (arrays)
+        # may have different orderings of the items
+        self.assertEqual(
+            sorted(allCallSetIdMap.keys()),
+            sorted(wormtableCallSetIdMap.keys()))
+        for key in allCallSetIdMap:
+            for value in allCallSetIdMap[key]:
+                self.assertIn(value, wormtableCallSetIdMap[key])

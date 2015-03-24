@@ -3,11 +3,15 @@ Flask-API
 Flask-Cors
 avro
 coverage
+flake8==2.3.0  # Set due to conflict with pep8 in version 2.4.0
 guppy
+humanize
 mock
 nose
 pep8
 pysam
+pyvcf
 pyyaml
 requests
+snakefood
 wormtable

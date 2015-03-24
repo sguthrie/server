@@ -9,18 +9,19 @@ from __future__ import unicode_literals
 
 import re
 import time
+import pstats
 import argparse
+import cProfile
 
 import ga4gh.backend
 import ga4gh.protocol as protocol
-import ga4gh.datamodel.variants as variants
 
 import guppy
 
 
-class HeapProfilerBackend(ga4gh.backend.Backend):
+class HeapProfilerBackend(ga4gh.backend.FileSystemBackend):
     def __init__(self, dataDir, variantSetClass):
-        super(HeapProfilerBackend, self).__init__(dataDir, variantSetClass)
+        super(HeapProfilerBackend, self).__init__(dataDir)
         self.profiler = guppy.hpy()
 
     def startProfile(self):
@@ -30,16 +31,28 @@ class HeapProfilerBackend(ga4gh.backend.Backend):
         print(self.profiler.heap())
 
 
-def _heavyQuery():
+class CpuProfilerBackend(ga4gh.backend.FileSystemBackend):
+    def __init__(self, dataDir):
+        super(CpuProfilerBackend, self).__init__(dataDir)
+        self.profiler = cProfile.Profile()
+
+    def startProfile(self):
+        self.profiler.enable()
+
+    def endProfile(self):
+        self.profiler.disable()
+
+
+def _heavyQuery(variantSetId, callSetIds):
     """
-    Very heavy query: all calls on chromosome 2
-    (11 pages, 90 seconds to fetch the entire thing
+    Very heavy query: calls for the specified list of callSetIds
+    on chromosome 2 (11 pages, 90 seconds to fetch the entire thing
     on a high-end desktop machine)
     """
     request = protocol.GASearchVariantsRequest()
     request.referenceName = '2'
-    request.variantSetIds = ['1000g_2013']
-    request.callSetIds = None
+    request.variantSetIds = [variantSetId]
+    request.callSetIds = callSetIds
     request.pageSize = 100
     request.end = 100000
     return request
@@ -58,7 +71,7 @@ def timeOneSearch(queryString):
 
 def extractNextPageToken(resultString):
     """
-    Calling GASearchVariantsResponse.fromJSONString() can be slower
+    Calling GASearchVariantsResponse.fromJsonString() can be slower
     than doing the variant search in the first place; instead we use
     a regexp to extract the next page token.
     """
@@ -77,7 +90,7 @@ def benchmarkOneQuery(request, repeatLimit=3, pageLimit=3):
     processing to prepare queries or parse responses.
     """
     times = []
-    queryString = request.toJSONString()
+    queryString = request.toJsonString()
     for i in range(0, repeatLimit):
         resultString, elapsedTime = timeOneSearch(queryString)
         accruedTime = elapsedTime
@@ -87,7 +100,7 @@ def benchmarkOneQuery(request, repeatLimit=3, pageLimit=3):
         while token is not None and pageCount < pageLimit:
             pageRequest = request
             pageRequest.pageToken = token
-            pageRequestString = pageRequest.toJSONString()
+            pageRequestString = pageRequest.toJsonString()
             resultString, elapsedTime = timeOneSearch(pageRequestString)
             accruedTime += elapsedTime
             pageCount = pageCount + 1
@@ -105,24 +118,52 @@ def benchmarkOneQuery(request, repeatLimit=3, pageLimit=3):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="GA4GH reference server benchmark")
-    parser.add_argument('--profile', default='none',
-                        choices=['none', 'heap'],
-                        help='"heap" runs a heap profiler '
-                             'once inside the backend')
-    parser.add_argument('--repeatLimit', type=int, default=3, metavar='N',
-                        help='how many times to run each test case '
-                             '(default: %(default)s)')
-    parser.add_argument('--pageLimit', type=int, default=3, metavar='N',
-                        help='how many pages (max) to load '
-                             'from each test case (default: %(default)s)')
+    parser.add_argument(
+        'variantSetId',
+        help="The variant set ID to run the query against")
+    parser.add_argument(
+        '--profile', default='none',
+        choices=['none', 'heap', 'cpu'],
+        help='"heap" runs a heap profiler once inside the backend, '
+             '"cpu" runs a cpu profiler.')
+    parser.add_argument(
+        '--repeatLimit', type=int, default=3, metavar='N',
+        help='how many times to run each test case (default: %(default)s)')
+    parser.add_argument(
+        '--pageLimit', type=int, default=3, metavar='N',
+        help='how many pages (max) to load '
+             'from each test case (default: %(default)s)')
+    parser.add_argument(
+        "--callSetIds", "-c", default=[],
+        help="""Return variant calls which belong to call sets
+            with these IDs. Pass in IDs as a comma separated list (no spaces),
+            or '*' (with the single quotes!) to indicate 'all call sets'.
+            Omit this option to indicate 'no call sets'.
+            """)
+
     args = parser.parse_args()
 
-    backendClass = ga4gh.backend.Backend
+    backendClass = ga4gh.backend.FileSystemBackend
     if args.profile == 'heap':
         backendClass = HeapProfilerBackend
         args.repeatLimit = 1
         args.pageLimit = 1
+    elif args.profile == 'cpu':
+        backendClass = CpuProfilerBackend
+    # Get our list of callSetids
+    callSetIds = args.callSetIds
+    if callSetIds != []:
+        callSetIds = None
+        if args.callSetIds != "*":
+            callSetIds = args.callSetIds.split(",")
 
-    backend = backendClass("ga4gh-example-data", variants.WormtableVariantSet)
+    backend = backendClass("ga4gh-example-data")
+    minTime = benchmarkOneQuery(
+        _heavyQuery(args.variantSetId, callSetIds), args.repeatLimit,
+        args.pageLimit)
+    print(minTime)
 
-    print(benchmarkOneQuery(_heavyQuery(), args.repeatLimit, args.pageLimit))
+    if args.profile == 'cpu':
+        stats = pstats.Stats(backend.profiler)
+        stats.sort_stats('time')
+        stats.print_stats(.25)
