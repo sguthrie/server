@@ -15,6 +15,7 @@ import ga4gh.client as client
 import ga4gh.backend as backend
 import ga4gh.protocol as protocol
 import ga4gh.datamodel.variants as variants
+import ga4gh.datamodel.expression_analysis as expression_analysis
 
 ##############################################################################
 # Server
@@ -61,15 +62,29 @@ def server_main(parser=None):
         "dataDir",
         help="The directory containing VCFs")
     tabixParser.set_defaults(variantSetClass=variants.TabixVariantSet)
+    # Expression Analysis
+    eaParser = subparsers.add_parser(
+        "rnaseq",
+        description="Serve the API using an RNAseq based backend.",
+        help="Serve data from RNAseq datafiles.")
+    eaParser.add_argument(
+        "dataDir",
+        help="The directory containing the RNAseq datafiles.")
+    eaParser.set_defaults(expressionAnalysisClass=expression_analysis.RNASeqResult)
 
     args = parser.parse_args()
-    if "variantSetClass" not in args:
-        parser.print_help()
-    else:
+    if "expressionAnalysisClass" in args:
         frontend.configure(args.config, args.config_file)
         frontend.app.backend = backend.Backend(
-            args.dataDir, args.variantSetClass)
+            args.dataDir, expressionAnalysisClass=args.expressionAnalysisClass)
         frontend.app.run(host="0.0.0.0", port=args.port, debug=True)
+    elif "variantSetClass" in args:
+        frontend.configure(args.config, args.config_file)
+        frontend.app.backend = backend.Backend(
+            args.dataDir, variantSetClass=args.variantSetClass)
+        frontend.app.run(host="0.0.0.0", port=args.port, debug=True)
+    else:
+        parser.print_help()
 
 ##############################################################################
 # Client
@@ -238,6 +253,25 @@ class ReadsSearchRunner(AbstractSearchRunner):
 
     def run(self):
         self._run('searchReads', 'id')
+
+
+class ExpressionAnalysisSearchRunner(AbstractSearchRunner):
+    """
+    Runner class for the expressionanalysis/search method
+    """
+    def __init__(self, args):
+        super(ExpressionAnalysisSearchRunner, self).__init__(args)
+        request = protocol.SearchExpressionAnalysisRequest()
+        #allow only a single ID for now
+        #setCommaSeparatedAttribute(request, args, 'expressionAnalysisId')
+        request.expressionAnalysisId = args.expressionAnalysisId
+        if self.usingWorkaroundsFor(client.HTTPClient.workaroundGoogle):
+            # google says referenceId not a valid field
+            del request.__dict__['referenceId']
+        self.setHttpClient(request, args)
+
+    def run(self):
+        self._run('searchExpressionAnalysis', 'id')
 
 
 class BenchmarkRunner(VariantSearchRunner):
@@ -465,6 +499,18 @@ def client_main(parser=None):
     rParser.add_argument(
         "--referenceName", default=None,
         help="The referenceName to search over")
+
+    # expressionanalysis/search
+    eaParser = subparsers.add_parser(
+        "expressionanalysis-search",
+        description="Search for expression analysis",
+        help="Search for expression analysis")
+    eaParser.set_defaults(runner=ExpressionAnalysisSearchRunner)
+    addUrlArgument(eaParser)
+    addPageSizeArgument(eaParser)
+    eaParser.add_argument(
+        "--expressionAnalysisId", default=None,
+        help="The expressionAnalysisId to search over")
 
     args = parser.parse_args()
     if "runner" not in args:

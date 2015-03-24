@@ -126,6 +126,10 @@ def searchVariants():
     else:
         return handleHTTPOptions()
 
-"""
-TODO: add app.routes for expression search api
-"""
+@app.route('/expressionanalysis/search', methods=['POST', 'OPTIONS'])
+def searchExpressionAnalysis():
+    if flask.request.method == "POST":
+        return handleHTTPPost(flask.request, app.backend.searchExpressionAnalysis)
+    else:
+        return handleHTTPOptions()
+

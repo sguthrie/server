@@ -123,6 +123,14 @@ class HTTPClient(object):
             request, "reads/search",
             protocol.GASearchReadsResponse, "alignments")
 
+    def searchExpressionAnalysis(self, request):
+        """
+        Returns an iterator over the ExpressionAnalysis objects from the server
+        """
+        return self.runRequest(
+            request, "expressionanalysis/search",
+            protocol.SearchExpressionAnalysisResponse, "expressionAnalyses")
+
     def getBytesRead(self):
         """
         Returns the total number of (non HTTP) bytes read from the server
