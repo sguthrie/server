@@ -124,6 +124,13 @@ class RequestFactory(object):
         request.end = self.args.end
         return request
 
+    def createSearchExpressionAnalysisRequest(self):
+        request = protocol.SearchExpressionAnalysisRequest()
+        #allow only a single ID for now
+        #setCommaSeparatedAttribute(request, self.args, 'expressionAnalysisId')
+        request.expressionAnalysisId = self.args.expressionAnalysisId
+        return request
+
 
 def getWorkarounds(args):
     if args.workarounds is None:
@@ -463,26 +470,32 @@ class SearchReadsRunner(AbstractSearchRunner):
         self._run(self._httpClient.searchReads, 'id')
 
 
-class ExpressionAnalysisSearchRunner(AbstractSearchRunner):
+class SearchExpressionAnalysisRunner(AbstractSearchRunner):
     """
     Runner class for the expressionanalysis/search method
     """
     def __init__(self, args):
-        super(ExpressionAnalysisSearchRunner, self).__init__(args)
-        request = protocol.SearchExpressionAnalysisRequest()
-        #allow only a single ID for now
-        #setCommaSeparatedAttribute(request, args, 'expressionAnalysisId')
-        request.expressionAnalysisId = args.expressionAnalysisId
-        if self.usingWorkaroundsFor(client.HTTPClient.workaroundGoogle):
-            # google says referenceId not a valid field
-            del request.__dict__['referenceId']
-        self.setHttpClient(request, args)
+        super(SearchExpressionAnalysisRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchExpressionAnalysisRequest()
+        self._setRequest(request, args)
 
     def run(self):
-        self._run('searchExpressionAnalysis', 'id')
+        if self._minimalOutput:
+            self._run(self._httpClient.searchExpressionAnalysis, 'id')
+        else:
+            results = self._httpClient.searchExpressionAnalysis(self._request)
+            for result in results:
+                self.printExpressionAnalysis(result)
+
+    def printExpressionAnalysis(self, analysis):
+        print(
+            analysis.id, analysis.description, analysis.name,
+            analysis.readGroupId, sep="\t", end="\t")
+        for annotation in analysis.annotationIds:
+            print(annotation, sep=",", end="")
+        print()
 
 
-class BenchmarkRunner(VariantSearchRunner):
 class ListReferenceBasesRunner(AbstractSearchRunner):
     """
     Runner class for the references/{id}/bases method
@@ -771,15 +784,16 @@ def addReadsSearchParserArguments(parser):
         "--referenceName", default=None,
         help="The referenceName to search over")
 
-    # expressionanalysis/search
-    eaParser = subparsers.add_parser(
+
+def addExpressionAnalysisSearchParserArguments(parser):
+    parser = subparsers.add_parser(
         "expressionanalysis-search",
         description="Search for expression analysis",
         help="Search for expression analysis")
-    eaParser.set_defaults(runner=ExpressionAnalysisSearchRunner)
-    addUrlArgument(eaParser)
-    addPageSizeArgument(eaParser)
-    eaParser.add_argument(
+    parser.set_defaults(runner=SearchExpressionAnalysisRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
         "--expressionAnalysisId", default=None,
         help="The expressionAnalysisId to search over")
 
@@ -831,6 +845,7 @@ def client_main(parser=None):
     addReferenceSetsGetParser(subparsers)
     addReferencesGetParser(subparsers)
     addReferencesBasesListParser(subparsers)
+    addExpressionAnalysisSearchParserArguments(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

@@ -251,27 +251,11 @@ class HttpClient(object):
             protocolRequest, "reads",
             protocol.GASearchReadsResponse, "alignments")
 
-    def searchExpressionAnalysis(self, request):
+    def searchExpressionAnalysis(self, protocolRequest):
         """
         Returns an iterator over the ExpressionAnalysis objects from the server
         """
-        return self.runRequest(
-            request, "expressionanalysis/search",
+        return self.runSearchRequest(
+            protocolRequest, "expressionanalysis",
             protocol.SearchExpressionAnalysisResponse, "expressionAnalyses")
 
-    def getBytesRead(self):
-        """
-        Returns the total number of (non HTTP) bytes read from the server
-        by this client.
-        """
-        return self._bytesRead
-
-    # TODO temporary auth solution
-    def _addAuth(self, url):
-        if self._usingWorkaroundsFor(self.workaroundGoogle):
-            return url + "?key={0}".format(self._key)
-        else:
-            return url
-
-    def _usingWorkaroundsFor(self, workaround):
-        return workaround in self._workarounds

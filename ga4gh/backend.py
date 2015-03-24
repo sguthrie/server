@@ -15,6 +15,7 @@ import ga4gh.datamodel.references as references
 import ga4gh.datamodel.reads as reads
 import ga4gh.exceptions as exceptions
 import ga4gh.datamodel.variants as variants
+import ga4gh.datamodel.expression_analysis as expression_analysis
 
 
 class AbstractBackend(object):
@@ -22,23 +23,8 @@ class AbstractBackend(object):
     An abstract GA4GH backend.
     This class provides methods for all of the GA4GH protocol end points.
     """
-    def __init__(self, dataDir, rnaReadSetClass=None, expressionAnalysisClass=None, variantSetClass=None):
-        self._dataDir = dataDir
+    def __init__(self):
         self._variantSetIdMap = {}
-        self._variantSetIds = []
-        self._expressionAnalysisIdMap = {}
-        self._expressionAnalysisIds = []
-        self._readSetIdMap = {}
-        self._readSetIds = []
-        if rnaReadSetClass is not None:
-            """
-            For the RNA demo there will be 2 parts.  The first is the read data
-            which will be accessed via the Reads API.  The second is feature level
-            expression data which will be accessed via the ExpressionAnalysis API.
-            For this pass on the demo server a single command line option will
-            denote an RNA demo and will use both the Reads and ExpressionAnalysis
-            APIs.  To do so, all the input data will need to be located in the same
-            dataDir specified on the command line.
         self._variantSetIds = []
         self._referenceSetIdMap = {}
         self._referenceSetIds = []
@@ -46,6 +32,8 @@ class AbstractBackend(object):
         self._readGroupSetIds = []
         self._callSetIdMap = {}
         self._callSetIds = []
+        self._expressionAnalysisIdMap = {}
+        self._expressionAnalysisIds = []
         self._requestValidation = False
         self._responseValidation = False
         self._defaultPageSize = 100
@@ -63,49 +51,6 @@ class AbstractBackend(object):
     def getCallSetIdMap(self):
         # TODO remove this --- why do we need direct access to the map?
         return self._callSetIdMap
-
-            It is assumed that datadir will contain 2 sub-directories:
-              reads
-              rnaseq
-
-            Each containing the corresponding files.  Reads will be stored as
-            individual BAM files for each readGroup.  Expression data will be stored
-            in sub-directories for each analysis.  Each of these sub-directories
-            contains the appropriate files for that analysis.
-            """
-            readsPath = os.path.join(self._dataDir, "reads")
-            for readGroupIdFile in os.listdir(readsPath):
-                relativePath = os.path.join(self._dataDir, readGroupIdFile)
-                if os.path.isfile(relativePath) and not readGroupId.startswith("."):
-                    # these are the BAM files
-                    readGroupId = readGroupIdFile.split(".")[0]
-                    self._readSetIdMap[readGroupId] = rnaReadSetClass(
-                        readGroupId, relativePath)
-            self._readSetIds = sorted(self._readSetIdMap.keys())
-
-            expressionPath = os.path.join(self._dataDir, "rnaseq")
-            expressionAnaylsisFile = os.path.join(expressionPath, "rnaseq.table")
-            expressionDataFile = open(expressionAnaylsisFile, "r")
-            for analysisEntry in expressionDataFile.readlines():
-                fields = analysisEntry.split("\t")
-                expressionAnalysisId = fields[0]
-                self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysisClass(
-                    expressionAnalysisId, expressionPath)
-            #for expressionAnalysisId in os.listdir(expressionPath):
-            #    relativePath = os.path.join(self._dataDir, expressionAnalysisId)
-            #    if os.path.isdir(relativePath):
-            #        # these are the expression data sub-directories
-            #        self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysisClass(
-            #            expressionAnalysisId, relativePath)
-            self._expressionAnalysisIds = sorted(self._expressionAnalysisIdMap.keys())
-        if variantSetClass is not None:
-            # All directories in datadir are assumed to correspond to VariantSets.
-            for variantSetId in os.listdir(self._dataDir):
-                relativePath = os.path.join(self._dataDir, variantSetId)
-                if os.path.isdir(relativePath):
-                    self._variantSetIdMap[variantSetId] = variantSetClass(
-                        variantSetId, relativePath)
-            self._variantSetIds = sorted(self._variantSetIdMap.keys())
 
     def parsePageToken(self, pageToken, numValues):
         """
@@ -232,6 +177,16 @@ class AbstractBackend(object):
             protocol.GASearchCallSetsResponse, "callSets",
             self.callSetsGenerator)
 
+    def searchExpressionAnalysis(self, request):
+        """
+        Returns a SearchExpressionAnalysisResponse for the specified
+        SearchExpressionAnalysisRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchExpressionAnalysisRequest,
+            protocol.SearchExpressionAnalysisResponse, "expressionAnalyses",
+            self.expressionAnalysisGenerator)
+
     # Iterators over the data hieararchy
 
     def _topLevelObjectGenerator(self, request, idMap, idList):
@@ -328,16 +283,6 @@ class AbstractBackend(object):
                     nextPageToken = "{0}:{1}".format(
                         variantSetIndex, callSetPosition + 1)
                     yield callSet, nextPageToken
-
-    def searchExpressionAnalysis(self, request):
-        """
-        Returns a SearchExpressionAnalysisResponse for the specified
-        SearchExpressionAnalysisRequest object.
-        """
-        return self.runSearchRequest(
-            request, protocol.SearchExpressionAnalysisRequest,
-            protocol.SearchExpressionAnalysisResponse, "expressionAnalyses",
-            self.expressionAnalysisGenerator)
 
     def expressionAnalysisGenerator(self, request):
         """
@@ -480,3 +425,14 @@ class FileSystemBackend(AbstractBackend):
                 if name not in self._callSetIdMap:
                     self._callSetIdMap[name] = []
                 self._callSetIdMap[name].append(variantSetId)
+
+        #expression analysis
+        expressionPath = os.path.join(self._dataDir, "rnaseq")
+        expressionAnaylsisFile = os.path.join(expressionPath, "rnaseq.table")
+        expressionDataFile = open(expressionAnaylsisFile, "r")
+        for analysisEntry in expressionDataFile.readlines():
+            fields = analysisEntry.split("\t")
+            expressionAnalysisId = fields[0]
+            self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysisClass(
+                expressionAnalysisId, expressionPath)
+        self._expressionAnalysisIds = sorted(self._expressionAnalysisIdMap.keys())

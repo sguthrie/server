@@ -297,6 +297,12 @@ def searchVariants(version):
         version, flask.request, app.backend.searchVariants)
 
 
+@app.route('/<version>/expressionanalysis/search', methods=['POST', 'OPTIONS'])
+def searchExpression(version):
+    return handleFlaskPostRequest(
+        version, flask.request, app.backend.searchExpression)
+
+
 # The below methods ensure that JSON is returned for various errors
 # instead of the default, html
 @app.errorhandler(404)
