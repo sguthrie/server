@@ -21,9 +21,10 @@ import ga4gh.frontend as frontend
 # (64 bit signed integer)
 # http://avro.apache.org/docs/1.7.7/spec.html#schema_primitive
 # AVRO_LONG_MAX = (1 << 63) - 1
-# TODO in the meantime, this is the max value wormtable can handle
-# TODO change this now that wormtable has been removed?
-AVRO_LONG_MAX = (1 << 32) - 2
+# TODO in the meantime, this is the max value pysam can handle
+# This should be removed once pysam input sanitisation has been
+# implemented.
+AVRO_LONG_MAX = 2**31 - 1
 
 
 def setCommaSeparatedAttribute(request, args, attr):
@@ -369,12 +370,19 @@ class SearchVariantsRunner(AbstractSearchRunner):
         self._setRequest(request, args)
 
     def run(self):
-        if self._minimalOutput:
-            self._run(self._httpClient.searchVariants, 'id')
-        else:
-            results = self._httpClient.searchVariants(self._request)
-            for result in results:
-                self.printVariant(result)
+        # TODO this is a hack until we make a nicer interface to deal with
+        # multiple requests. The server does not support multiple values
+        # so we send of sequential requests instead.
+        request = self._request
+        variantSetIds = request.variantSetIds
+        for variantSetId in variantSetIds:
+            request.variantSetIds = [variantSetId]
+            if self._minimalOutput:
+                self._run(self._httpClient.searchVariants, 'id')
+            else:
+                results = self._httpClient.searchVariants(self._request)
+                for result in results:
+                    self.printVariant(result)
 
     def printVariant(self, variant):
         """
