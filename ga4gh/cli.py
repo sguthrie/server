@@ -127,11 +127,11 @@ class RequestFactory(object):
         request.end = self.args.end
         return request
 
-    def createSearchExpressionAnalysisRequest(self):
-        request = protocol.SearchExpressionAnalysisRequest()
+    def createSearchRnaQuantificationRequest(self):
+        request = protocol.SearchRnaQuantificationRequest()
         #allow only a single ID for now
-        #setCommaSeparatedAttribute(request, self.args, 'expressionAnalysisId')
-        request.expressionAnalysisId = self.args.expressionAnalysisId
+        #setCommaSeparatedAttribute(request, self.args, 'rnaQuantificationId')
+        request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
 
 
@@ -473,24 +473,24 @@ class SearchReadsRunner(AbstractSearchRunner):
         self._run(self._httpClient.searchReads, 'id')
 
 
-class SearchExpressionAnalysisRunner(AbstractSearchRunner):
+class SearchRnaQuantificationRunner(AbstractSearchRunner):
     """
-    Runner class for the expressionanalysis/search method
+    Runner class for the rnaquantification/search method
     """
     def __init__(self, args):
-        super(SearchExpressionAnalysisRunner, self).__init__(args)
-        request = RequestFactory(args).createSearchExpressionAnalysisRequest()
+        super(SearchRnaQuantificationRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchRnaQuantificationRequest()
         self._setRequest(request, args)
 
     def run(self):
         if self._minimalOutput:
-            self._run(self._httpClient.searchExpressionAnalysis, 'id')
+            self._run(self._httpClient.searchRnaQuantification, 'id')
         else:
-            results = self._httpClient.searchExpressionAnalysis(self._request)
+            results = self._httpClient.searchRnaQuantification(self._request)
             for result in results:
-                self.printExpressionAnalysis(result)
+                self.printRnaQuantification(result)
 
-    def printExpressionAnalysis(self, analysis):
+    def printRnaQuantification(self, analysis):
         print(
             analysis.id, analysis.description, analysis.name,
             analysis.readGroupId, sep="\t", end="\t")
@@ -787,17 +787,17 @@ def addReadsSearchParserArguments(parser):
         help="The referenceName to search over")
 
 
-def addExpressionAnalysisSearchParserArguments(parser):
+def addRnaQuantificationSearchParserArguments(parser):
     parser = subparsers.add_parser(
-        "expressionanalysis-search",
-        description="Search for expression analysis",
-        help="Search for expression analysis")
-    parser.set_defaults(runner=SearchExpressionAnalysisRunner)
+        "rnaquantification-search",
+        description="Search for rna quantification",
+        help="Search for rna quantification")
+    parser.set_defaults(runner=SearchRnaQuantificationRunner)
     addUrlArgument(parser)
     addPageSizeArgument(parser)
     parser.add_argument(
-        "--expressionAnalysisId", default=None,
-        help="The expressionAnalysisId to search over")
+        "--rnaQuantificationId", default=None,
+        help="The rnaQuantificationId to search over")
 
 
 def addReferenceSetsGetParser(subparsers):
@@ -847,7 +847,7 @@ def client_main(parser=None):
     addReferenceSetsGetParser(subparsers)
     addReferencesGetParser(subparsers)
     addReferencesBasesListParser(subparsers)
-    addExpressionAnalysisSearchParserArguments(subparsers)
+    addRnaQuantificationSearchParserArguments(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

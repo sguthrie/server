@@ -13,13 +13,13 @@ import ga4gh.protocol as protocol
 
 class RNASeqResult(object):
     """
-    Class representing a single ExpressionAnalysis in the GA4GH data model.
+    Class representing a single RnaQuantification in the GA4GH data model.
     """
-    def __init__(self, expressionAnalysisId, expressionDataPath):
-        self._expressionAnalysisId = expressionAnalysisId
-        self._expressionAnalysisFile = os.path.join(expressionDataPath, "rnaseq.table")
-        self._characterizationFile = os.path.join(expressionDataPath, "dist.table")
-        self._readCountFile = os.path.join(expressionDataPath, "counts.table")
+    def __init__(self, rnaQuantificationId, rnaQuantDataPath):
+        self._rnaQuantificationId = rnaQuantificationId
+        self._rnaQuantificationFile = os.path.join(rnaQuantDataPath, "rnaseq.table")
+        self._characterizationFile = os.path.join(rnaQuantDataPath, "dist.table")
+        self._readCountFile = os.path.join(rnaQuantDataPath, "counts.table")
 
     def convertCharacterization(self, record):
         readCharacterization = protocol.Characterization
@@ -32,7 +32,7 @@ class RNASeqResult(object):
 
         return readCharacterization
 
-    def getCharacterization(self, expressionAnalsisId):
+    def getCharacterization(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
@@ -40,7 +40,7 @@ class RNASeqResult(object):
         characterizationData = open(self._characterizationFile, "r")
         for record in characterizationData.readlines():
             fields = record.split('/t')
-            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
                 yield self.convertCharacterization(fields)
 
     def convertReadCounts(self, record):
@@ -54,7 +54,7 @@ class RNASeqResult(object):
 
         return readCount
 
-    def getReadCounts(self, expressionAnalsisId):
+    def getReadCounts(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
@@ -62,30 +62,30 @@ class RNASeqResult(object):
         readCountData = open(self._readCountFile, "r")
         for record in readCountData.readlines():
             fields = record.split('/t')
-            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
                 yield self.convertReadCounts(fields)
 
-    def convertExpressionAnalysis(self, record):
-        expressionAnalysis = protocol.ExpressionAnalysis
-        expressionAnalysis.id = record[0]
-        expressionAnalysis.annotationIds = record[1].split(',')
-        expressionAnalysis.description = record[2]
-        expressionAnalysis.name = record[3]
-        expressionAnalysis.readGroupId = record[4]
+    def convertRnaQuantification(self, record):
+        rnaQuantification = protocol.RnaQuantification
+        rnaQuantification.id = record[0]
+        rnaQuantification.annotationIds = record[1].split(',')
+        rnaQuantification.description = record[2]
+        rnaQuantification.name = record[3]
+        rnaQuantification.readGroupId = record[4]
 
-        return expressionAnalysis
+        return rnaQuantification
 
-    def getExpressionAnalysis(self, expressionAnalysisId):
+    def getRnaQuantification(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         Id, annotations, description, name, readGroupId
         where annotation is a comma separated list
         """
-        expressionAnalysisData = open(self._expressionAnalysisFile, "r")
-        for record in expressionAnalysisData.readlines():
+        rnaQuantificationData = open(self._rnaQuantificationFile, "r")
+        for record in rnaQuantificationData.readlines():
             fields = record.strip().split('\t')
-            if expressionAnalysisId is None or fields[0] == expressionAnalysisId:
-                yield self.convertExpressionAnalysis(fields)
+            if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
+                yield self.convertRnaQuantification(fields)
 
 
 class SimulatedRNASeqResult(object):
@@ -93,8 +93,8 @@ class SimulatedRNASeqResult(object):
     An RNA Quantification that doesn't derive from a data store.
     Used mostly for testing.
     """
-    def __init__(self, expressionAnalysisId, expressionDataPath):
-        self._expressionAnalysisId = expressionAnalysisId
+    def __init__(self, rnaQuantificationId, rnaQuantDataPath):
+        self._rnaQuantificationId = rnaQuantificationId
 
     def generateCharacterization(self):
         """
@@ -104,7 +104,7 @@ class SimulatedRNASeqResult(object):
 
         return readCharacterization
 
-    def getCharacterization(self, expressionAnalsisId):
+    def getCharacterization(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
@@ -112,7 +112,7 @@ class SimulatedRNASeqResult(object):
         characterizationData = open(self._characterizationFile, "r")
         for record in characterizationData.readlines():
             fields = record.split('/t')
-            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
                 yield self.generateCharacterization(fields)
 
     def generateReadCounts(self):
@@ -123,7 +123,7 @@ class SimulatedRNASeqResult(object):
 
         return readCount
 
-    def getReadCounts(self, expressionAnalsisId):
+    def getReadCounts(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
@@ -131,25 +131,25 @@ class SimulatedRNASeqResult(object):
         readCountData = open(self._readCountFile, "r")
         for record in readCountData.readlines():
             fields = record.split('/t')
-            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
                 yield self.generateReadCounts()
 
-    def generateExpressionAnalysis(self, record):
+    def generateRnaQuantification(self, record):
         """
             Currently just returns default values.
         """
-        expressionAnalysis = protocol.ExpressionAnalysis
+        rnaQuantification = protocol.RnaQuantification
 
-        return expressionAnalysis
+        return rnaQuantification
 
-    def getExpressionAnalysis(self, expressionAnalysisId):
+    def getRnaQuantification(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
         Id, annotations, description, name, readGroupId
         where annotation is a comma separated list
         """
-        expressionAnalysisData = open(self._expressionAnalysisFile, "r")
-        for record in expressionAnalysisData.readlines():
+        rnaQuantificationData = open(self._rnaQuantificationFile, "r")
+        for record in rnaQuantificationData.readlines():
             fields = record.strip().split('\t')
-            if expressionAnalysisId is None or fields[0] == expressionAnalysisId:
-                yield self.generateExpressionAnalysis(fields)
+            if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
+                yield self.generateRnaQuantification(fields)

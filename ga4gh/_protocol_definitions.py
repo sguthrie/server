@@ -127,12 +127,12 @@ Read characterization data.
         self.intronicFraction = None
 
 
-class ExpressionAnalysis(ProtocolElement):
+class RnaQuantification(ProtocolElement):
     """
 Top level identifying information
     """
     _schemaSource = """
-{"namespace": "org.ga4gh", "type": "record", "name": "ExpressionAnalysis",
+{"namespace": "org.ga4gh", "type": "record", "name": "RnaQuantification",
 "fields": [{"doc": "", "type": "string", "name": "id"}, {"default":
 null, "doc": "", "type": ["null", "string"], "name": "name"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
@@ -1932,15 +1932,15 @@ Details of the read counts.
         self.uniqueSpliceCount = None
 
 
-class SearchExpressionAnalysisRequest(ProtocolElement):
+class SearchRnaQuantificationRequest(ProtocolElement):
     """
-This request maps to the body of 'POST /expressionanalysis/search'
+This request maps to the body of 'POST /rnaquantification/search'
 as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh", "type": "record", "name":
-"SearchExpressionAnalysisRequest", "fields": [{"default": null,
-"doc": "", "type": ["null", "string"], "name": "expressionAnalysisId"},
+"SearchRnaQuantificationRequest", "fields": [{"default": null,
+"doc": "", "type": ["null", "string"], "name": "rnaQuantificationId"},
 {"default": null, "doc": "", "type": ["null", "int"], "name":
 "pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "pageToken"}], "doc": ""}
@@ -1958,29 +1958,29 @@ as JSON.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['expressionAnalysisId', 'pageSize', 'pageToken']
+    __slots__ = ['rnaQuantificationId', 'pageSize', 'pageToken']
 
     def __init__(self):
-        self.expressionAnalysisId = None
+        self.rnaQuantificationId = None
         self.pageSize = None
         self.pageToken = None
 
 
-class SearchExpressionAnalysisResponse(ProtocolElement):
+class SearchRnaQuantificationResponse(ProtocolElement):
     """
-This is the response from 'POST /expressionanalysis/search' expressed as JSON.
+This is the response from 'POST /rnaquantification/search' expressed as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh", "type": "record", "name":
-"SearchExpressionAnalysisResponse", "fields": [{"default": [],
+"SearchRnaQuantificationResponse", "fields": [{"default": [],
 "doc": "", "type": {"items": {"doc": "", "type": "record", "name":
-"ExpressionAnalysis", "fields": [{"doc": "", "type": "string",
+"RnaQuantification", "fields": [{"doc": "", "type": "string",
 "name": "id"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "name"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "description"}, {"doc": "", "type":
 "string", "name": "readGroupId"}, {"default": [], "doc": "", "type":
 {"items": "string", "type": "array"}, "name": "annotationIds"}]},
-"type": "array"}, "name": "expressionAnalyses"}, {"default": null,
+"type": "array"}, "name": "rnaQuantification"}, {"default": null,
 "doc": "", "type": ["null", "string"], "name": "nextPageToken"}], "doc":
 ""}
 """
@@ -1990,21 +1990,21 @@ This is the response from 'POST /expressionanalysis/search' expressed as JSON.
     @classmethod
     def isEmbeddedType(cls, fieldName):
         embeddedTypes = {
-            'expressionAnalyses': ExpressionAnalysis,
+            'rnaQuantification': RnaQuantification,
         }
         return fieldName in embeddedTypes
 
     @classmethod
     def getEmbeddedType(cls, fieldName):
         embeddedTypes = {
-            'expressionAnalyses': ExpressionAnalysis,
+            'rnaQuantification': RnaQuantification,
         }
         return embeddedTypes[fieldName]
 
-    __slots__ = ['expressionAnalyses', 'nextPageToken']
+    __slots__ = ['rnaQuantification', 'nextPageToken']
 
     def __init__(self):
-        self.expressionAnalyses = []
+        self.rnaQuantification = []
         self.nextPageToken = None
 
 postMethods = \
@@ -2029,6 +2029,6 @@ postMethods = \
      ('/callsets/search',
       GASearchCallSetsRequest,
       GASearchCallSetsResponse),
-     ('/expressionanalysis/search',
-      SearchExpressionAnalysisRequest,
-      SearchExpressionAnalysisResponse)]
+     ('/rnaquantification/search',
+      SearchRnaQuantificationRequest,
+      SearchRnaQuantificationResponse)]

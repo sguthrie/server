@@ -298,10 +298,10 @@ def searchVariants(version):
         version, flask.request, app.backend.searchVariants)
 
 
-@app.route('/<version>/expressionanalysis/search', methods=['POST', 'OPTIONS'])
+@app.route('/<version>/rnaquantification/search', methods=['POST', 'OPTIONS'])
 def searchExpression(version):
     return handleFlaskPostRequest(
-        version, flask.request, app.backend.searchExpression)
+        version, flask.request, app.backend.searchRnaQuantification)
 
 
 # The below methods ensure that JSON is returned for various errors

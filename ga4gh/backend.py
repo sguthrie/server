@@ -15,7 +15,7 @@ import ga4gh.datamodel.references as references
 import ga4gh.datamodel.reads as reads
 import ga4gh.exceptions as exceptions
 import ga4gh.datamodel.variants as variants
-import ga4gh.datamodel.expression_analysis as expression_analysis
+import ga4gh.datamodel.rna_quantification as rna_quantification
 
 
 class AbstractBackend(object):
@@ -32,8 +32,8 @@ class AbstractBackend(object):
         self._readGroupSetIds = []
         self._readGroupIds = []
         self._readGroupIdMap = {}
-        self._expressionAnalysisIdMap = {}
-        self._expressionAnalysisIds = []
+        self._rnaQuantificationIdMap = {}
+        self._rnaQuantificationIds = []
         self._requestValidation = False
         self._responseValidation = False
         self._defaultPageSize = 100
@@ -167,15 +167,15 @@ class AbstractBackend(object):
             protocol.GASearchCallSetsResponse,
             self.callSetsGenerator)
 
-    def searchExpressionAnalysis(self, request):
+    def searchRnaQuantification(self, request):
         """
-        Returns a SearchExpressionAnalysisResponse for the specified
-        SearchExpressionAnalysisRequest object.
+        Returns a SearchRnaQuantificationResponse for the specified
+        SearchRnaQuantificationRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.SearchExpressionAnalysisRequest,
-            protocol.SearchExpressionAnalysisResponse,
-            self.expressionAnalysisGenerator)
+            request, protocol.SearchRnaQuantificationRequest,
+            protocol.SearchRnaQuantificationResponse,
+            self.rnaQuantificationGenerator)
 
     # Iterators over the data hieararchy
 
@@ -326,30 +326,30 @@ class AbstractBackend(object):
             variantSet.getCallSetIds())
 
 
-    def expressionAnalysisGenerator(self, request):
+    def rnaQuantificationGenerator(self, request):
         """
-        Returns a generator over the (expressionAnalysis, nextPageToken) pairs defined
+        Returns a generator over the (rnaQuantification, nextPageToken) pairs defined
         by the specified request.
         """
-        expressionAnalysisId = request.expressionAnalysisId
+        rnaQuantificationId = request.rnaQuantificationId
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = self.parsePageToken(request.pageToken, 1)
-        expressionAnalysisRecord = self._expressionAnalysisIds[0]
-        expressionIterator = self._expressionAnalysisIdMap[
-            expressionAnalysisRecord].getExpressionAnalysis(expressionAnalysisId)
-        for expressionData in expressionIterator:
-            expressionAnalysis = protocol.ExpressionAnalysis()
-            expressionAnalysis.annotationIds = expressionData.annotationIds
-            expressionAnalysis.description = expressionData.description
-            expressionAnalysis.id = expressionData.id
-            expressionAnalysis.name = expressionData.name
-            expressionAnalysis.readGroupId = expressionData.readGroupId
+        rnaQuantificationRecord = self._rnaQuantificationIds[0]
+        rnaQuantIterator = self._rnaQuantificationIdMap[
+            rnaQuantificationRecord].getRnaQuantification(rnaQuantificationId)
+        for rnaQuantData in rnaQuantIterator:
+            rnaQuantification = protocol.RnaQuantification()
+            rnaQuantification.annotationIds = rnaQuantData.annotationIds
+            rnaQuantification.description = rnaQuantData.description
+            rnaQuantification.id = rnaQuantData.id
+            rnaQuantification.name = rnaQuantData.name
+            rnaQuantification.readGroupId = rnaQuantData.readGroupId
             nextPageToken = None
-            if currentIndex < len(self._expressionAnalysisIds):
+            if currentIndex < len(self._rnaQuantificationIds):
                 nextPageToken = str(currentIndex)
             currentIndex += 1
-            yield expressionAnalysis, nextPageToken
+            yield rnaQuantification, nextPageToken
 
     def startProfile(self):
         """
@@ -485,15 +485,15 @@ class FileSystemBackend(AbstractBackend):
                     self._readGroupIdMap[readGroup.getId()] = readGroup
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
 
-        #expression analysis
+        #Rna Quantification
         #TODO: change this to the model with every sub-dir as an entry
-        expressionAnalysisDir = os.path.join(self._dataDir, "rnaseq")
-        expressionAnalysisFile = os.path.join(expressionAnalysisDir, "rnaseq.table")
-        expressionDataEntries = open(expressionAnalysisFile, "r")
-        for analysisEntry in expressionDataEntries.readlines():
-            fields = analysisEntry.split("\t")
-            expressionAnalysisId = fields[0]
-            expressionAnalysis = expression_analysis.RNASeqResult(expressionAnalysisId,
-                expressionAnalysisDir)
-            self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysis
-        self._expressionAnalysisIds = sorted(self._expressionAnalysisIdMap.keys())
+        rnaQuantificationDir = os.path.join(self._dataDir, "rnaseq")
+        rnaQuantificationFile = os.path.join(expressionAnalysisDir, "rnaseq.table")
+        rnaQuantEntries = open(rnaQuantificationFile, "r")
+        for rnaQuantEntry in rnaQunatDataEntries.readlines():
+            fields = rnaQuantEntry.split("\t")
+            rnaQuantificationId = fields[0]
+            rnaQuantification = rna_quantification.RNASeqResult(rnaQuantificationId,
+                rnaQuantificationDir)
+            self._rnaQuantificationIdMap[rnaQuantificationId] = rnaQuantification
+        self._rnaQuantificationIds = sorted(self._rnaQuantificationIdMap.keys())

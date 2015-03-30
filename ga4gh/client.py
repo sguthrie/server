@@ -251,11 +251,11 @@ class HttpClient(object):
             protocolRequest, "reads",
             protocol.GASearchReadsResponse, "alignments")
 
-    def searchExpressionAnalysis(self, protocolRequest):
+    def searchRnaQuantification(self, protocolRequest):
         """
         Returns an iterator over the ExpressionAnalysis objects from the server
         """
         return self.runSearchRequest(
-            protocolRequest, "expressionanalysis",
-            protocol.SearchExpressionAnalysisResponse, "expressionAnalyses")
+            protocolRequest, "rnaquantification",
+            protocol.SearchRnaQuantificationResponse, "rnaQuantification")
 
