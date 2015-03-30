@@ -427,12 +427,14 @@ class FileSystemBackend(AbstractBackend):
                 self._callSetIdMap[name].append(variantSetId)
 
         #expression analysis
-        expressionPath = os.path.join(self._dataDir, "rnaseq")
-        expressionAnaylsisFile = os.path.join(expressionPath, "rnaseq.table")
-        expressionDataFile = open(expressionAnaylsisFile, "r")
-        for analysisEntry in expressionDataFile.readlines():
+        #TODO: change this to the model with every sub-dir as an entry
+        expressionAnalysisDir = os.path.join(self._dataDir, "rnaseq")
+        expressionAnalysisFile = os.path.join(expressionAnalysisDir, "rnaseq.table")
+        expressionDataEntries = open(expressionAnalysisFile, "r")
+        for analysisEntry in expressionDataEntries.readlines():
             fields = analysisEntry.split("\t")
             expressionAnalysisId = fields[0]
-            self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysisClass(
-                expressionAnalysisId, expressionPath)
+            expressionAnalysis = expression_analysis.RNASeqResult(expressionAnalysisId,
+                expressionAnalysisDir)
+            self._expressionAnalysisIdMap[expressionAnalysisId] = expressionAnalysis
         self._expressionAnalysisIds = sorted(self._expressionAnalysisIdMap.keys())

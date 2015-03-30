@@ -86,3 +86,70 @@ class RNASeqResult(object):
             fields = record.strip().split('\t')
             if expressionAnalysisId is None or fields[0] == expressionAnalysisId:
                 yield self.convertExpressionAnalysis(fields)
+
+
+class SimulatedRNASeqResult(object):
+    """
+    An RNA Quantification that doesn't derive from a data store.
+    Used mostly for testing.
+    """
+    def __init__(self, expressionAnalysisId, expressionDataPath):
+        self._expressionAnalysisId = expressionAnalysisId
+
+    def generateCharacterization(self):
+        """
+            Currently just returns default values.
+        """
+        readCharacterization = protocol.Characterization
+
+        return readCharacterization
+
+    def getCharacterization(self, expressionAnalsisId):
+        """
+        input is tab file with no header.  Columns are:
+        analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
+        """
+        characterizationData = open(self._characterizationFile, "r")
+        for record in characterizationData.readlines():
+            fields = record.split('/t')
+            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+                yield self.generateCharacterization(fields)
+
+    def generateReadCounts(self):
+        """
+            Currently just returns default values.
+        """
+        readCount = protocol.ReadCounts
+
+        return readCount
+
+    def getReadCounts(self, expressionAnalsisId):
+        """
+        input is tab file with no header.  Columns are:
+        analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
+        """
+        readCountData = open(self._readCountFile, "r")
+        for record in readCountData.readlines():
+            fields = record.split('/t')
+            if expressionAnalysisID is None or fields[0] == expressionAnalysisId:
+                yield self.generateReadCounts()
+
+    def generateExpressionAnalysis(self, record):
+        """
+            Currently just returns default values.
+        """
+        expressionAnalysis = protocol.ExpressionAnalysis
+
+        return expressionAnalysis
+
+    def getExpressionAnalysis(self, expressionAnalysisId):
+        """
+        input is tab file with no header.  Columns are:
+        Id, annotations, description, name, readGroupId
+        where annotation is a comma separated list
+        """
+        expressionAnalysisData = open(self._expressionAnalysisFile, "r")
+        for record in expressionAnalysisData.readlines():
+            fields = record.strip().split('\t')
+            if expressionAnalysisId is None or fields[0] == expressionAnalysisId:
+                yield self.generateExpressionAnalysis(fields)
