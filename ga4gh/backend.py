@@ -339,24 +339,29 @@ class AbstractBackend(object):
         by the specified request.
         """
         rnaQuantificationId = request.rnaQuantificationId
+        try:
+            rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
+        except KeyError:
+            raise exceptions.RnaQuantificationNotFoundException(rnaQuantificationId)
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = self.parsePageToken(request.pageToken, 1)
-        rnaQuantIterator = self._rnaQuantificationIdMap[
-            rnaQuantificationId].getRnaQuantification(rnaQuantificationId)
-        for rnaQuantData in rnaQuantIterator:
+        rnaQuantIterator = rnaQuant.getRnaQuantification(rnaQuantificationId)
+        rnaQuantData = next(rnaQuantIterator, None)
+        while rnaQuantData is not None:
+            nextRnaQuantData = next(rnaQuantIterator, None)
+            nextPageToken = None
+            if nextRnaQuantData is not None:
+                currentIndex += 1
+                nextPageToken = "{}".format(currentIndex)
             rnaQuantification = protocol.RnaQuantification()
             rnaQuantification.annotationIds = rnaQuantData.annotationIds
             rnaQuantification.description = rnaQuantData.description
             rnaQuantification.id = rnaQuantData.id
             rnaQuantification.name = rnaQuantData.name
             rnaQuantification.readGroupId = rnaQuantData.readGroupId
-            currentIndex += 1
-            nextPageToken = None
-            if currentIndex < len(self._rnaQuantificationIds):
-                nextPageToken = str(currentIndex)
             yield rnaQuantification, nextPageToken
-        
+            rnaQuantData = nextRnaQuantData
 
     def startProfile(self):
         """
