@@ -344,10 +344,10 @@ class AbstractBackend(object):
             rnaQuantification.id = rnaQuantData.id
             rnaQuantification.name = rnaQuantData.name
             rnaQuantification.readGroupId = rnaQuantData.readGroupId
+            currentIndex += 1
             nextPageToken = None
             if currentIndex < len(self._rnaQuantificationIds):
                 nextPageToken = str(currentIndex)
-            currentIndex += 1
             yield rnaQuantification, nextPageToken
         
 
