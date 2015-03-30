@@ -10,7 +10,10 @@ import os
 
 import ga4gh.protocol as protocol
 
-
+"""
+TODO: Would be nice to just use the csv module to read inputs and have headers in files for clarity
+      and to eliminate the whole record[N] absurdity.
+"""
 class RNASeqResult(object):
     """
     Class representing a single RnaQuantification in the GA4GH data model.
@@ -38,10 +41,10 @@ class RNASeqResult(object):
         analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
         """
         characterizationData = open(self._characterizationFile, "r")
-        for record in characterizationData.readlines():
-            fields = record.split('/t')
-            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
-                yield self.convertCharacterization(fields)
+        quantCharacterization = characterizationData.readline()
+        fields = quantCharacterization.split('/t')
+        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+            yield self.convertCharacterization(fields)
 
     def convertReadCounts(self, record):
         readCount = protocol.ReadCounts
@@ -60,10 +63,10 @@ class RNASeqResult(object):
         analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
         """
         readCountData = open(self._readCountFile, "r")
-        for record in readCountData.readlines():
-            fields = record.split('/t')
-            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
-                yield self.convertReadCounts(fields)
+        countData = readCountData.readline()
+        fields = countData.split('/t')
+        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+            yield self.convertReadCounts(fields)
 
     def convertRnaQuantification(self, record):
         rnaQuantification = protocol.RnaQuantification
@@ -82,10 +85,10 @@ class RNASeqResult(object):
         where annotation is a comma separated list
         """
         rnaQuantificationData = open(self._rnaQuantificationFile, "r")
-        for record in rnaQuantificationData.readlines():
-            fields = record.strip().split('\t')
-            if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
-                yield self.convertRnaQuantification(fields)
+        quantData = rnaQuantificationData.readline()
+        fields = quantData.strip().split('\t')
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
+            yield self.convertRnaQuantification(fields)
 
 
 class SimulatedRNASeqResult(object):
@@ -110,10 +113,10 @@ class SimulatedRNASeqResult(object):
         analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
         """
         characterizationData = open(self._characterizationFile, "r")
-        for record in characterizationData.readlines():
-            fields = record.split('/t')
-            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
-                yield self.generateCharacterization(fields)
+        quantCharacterization = characterizationData.readline()
+        fields = quantCharacterization.split('/t')
+        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+            yield self.generateCharacterization()
 
     def generateReadCounts(self):
         """
@@ -129,12 +132,12 @@ class SimulatedRNASeqResult(object):
         analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
         """
         readCountData = open(self._readCountFile, "r")
-        for record in readCountData.readlines():
-            fields = record.split('/t')
-            if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
-                yield self.generateReadCounts()
+        countData = readCountData.readline()
+        fields = countData.split('/t')
+        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+            yield self.generateReadCounts()
 
-    def generateRnaQuantification(self, record):
+    def generateRnaQuantification(self):
         """
             Currently just returns default values.
         """
@@ -149,7 +152,7 @@ class SimulatedRNASeqResult(object):
         where annotation is a comma separated list
         """
         rnaQuantificationData = open(self._rnaQuantificationFile, "r")
-        for record in rnaQuantificationData.readlines():
-            fields = record.strip().split('\t')
-            if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
-                yield self.generateRnaQuantification(fields)
+        quantData = rnaQuantificationData.readline()
+        fields = quantData.strip().split('\t')
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
+            yield self.generateRnaQuantification()

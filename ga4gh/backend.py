@@ -335,9 +335,8 @@ class AbstractBackend(object):
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = self.parsePageToken(request.pageToken, 1)
-        rnaQuantificationRecord = self._rnaQuantificationIds[0]
         rnaQuantIterator = self._rnaQuantificationIdMap[
-            rnaQuantificationRecord].getRnaQuantification(rnaQuantificationId)
+            rnaQuantificationId].getRnaQuantification(rnaQuantificationId)
         for rnaQuantData in rnaQuantIterator:
             rnaQuantification = protocol.RnaQuantification()
             rnaQuantification.annotationIds = rnaQuantData.annotationIds
@@ -350,6 +349,7 @@ class AbstractBackend(object):
                 nextPageToken = str(currentIndex)
             currentIndex += 1
             yield rnaQuantification, nextPageToken
+        
 
     def startProfile(self):
         """
@@ -486,14 +486,12 @@ class FileSystemBackend(AbstractBackend):
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
 
         #Rna Quantification
-        #TODO: change this to the model with every sub-dir as an entry
-        rnaQuantificationDir = os.path.join(self._dataDir, "rnaseq")
-        rnaQuantificationFile = os.path.join(expressionAnalysisDir, "rnaseq.table")
-        rnaQuantEntries = open(rnaQuantificationFile, "r")
-        for rnaQuantEntry in rnaQunatDataEntries.readlines():
-            fields = rnaQuantEntry.split("\t")
-            rnaQuantificationId = fields[0]
-            rnaQuantification = rna_quantification.RNASeqResult(rnaQuantificationId,
-                rnaQuantificationDir)
-            self._rnaQuantificationIdMap[rnaQuantificationId] = rnaQuantification
+        rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
+        for rnaQuantId in os.listdir(rnaQuantDir):
+            relativePath = os.path.join(rnaQuantDir, rnaQuantId)
+            if os.path.isdir(relativePath):
+                rnaQuantification = rna_quantification.RNASeqResult(
+                    rnaQuantId, relativePath)
+                self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
         self._rnaQuantificationIds = sorted(self._rnaQuantificationIdMap.keys())
+

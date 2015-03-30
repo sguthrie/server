@@ -1932,7 +1932,7 @@ Details of the read counts.
         self.uniqueSpliceCount = None
 
 
-class SearchRnaQuantificationRequest(ProtocolElement):
+class SearchRnaQuantificationRequest(SearchRequest):
     """
 This request maps to the body of 'POST /rnaquantification/search'
 as JSON.
@@ -1966,7 +1966,7 @@ as JSON.
         self.pageToken = None
 
 
-class SearchRnaQuantificationResponse(ProtocolElement):
+class SearchRnaQuantificationResponse(SearchResponse):
     """
 This is the response from 'POST /rnaquantification/search' expressed as JSON.
     """
@@ -1986,6 +1986,7 @@ This is the response from 'POST /rnaquantification/search' expressed as JSON.
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
+    _valueListName = "rnaQuantification"
 
     @classmethod
     def isEmbeddedType(cls, fieldName):

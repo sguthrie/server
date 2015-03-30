@@ -490,11 +490,11 @@ class SearchRnaQuantificationRunner(AbstractSearchRunner):
             for result in results:
                 self.printRnaQuantification(result)
 
-    def printRnaQuantification(self, analysis):
+    def printRnaQuantification(self, rnaQuant):
         print(
-            analysis.id, analysis.description, analysis.name,
-            analysis.readGroupId, sep="\t", end="\t")
-        for annotation in analysis.annotationIds:
+            rnaQuant.id, rnaQuant.description, rnaQuant.name,
+            rnaQuant.readGroupId, sep="\t", end="\t")
+        for annotation in rnaQuant.annotationIds:
             print(annotation, sep=",", end="")
         print()
 
@@ -787,7 +787,7 @@ def addReadsSearchParserArguments(parser):
         help="The referenceName to search over")
 
 
-def addRnaQuantificationSearchParserArguments(parser):
+def addRnaQuantificationSearchParserArguments(subparsers):
     parser = subparsers.add_parser(
         "rnaquantification-search",
         description="Search for rna quantification",
