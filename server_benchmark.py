@@ -1,7 +1,5 @@
 """
 Stand-alone benchmark for the GA4GH reference implementation.
-
-Assumes that wormtable sample data is installed at ./ga4gh-example-data.
 """
 from __future__ import division
 from __future__ import print_function
@@ -20,7 +18,7 @@ import guppy
 
 
 class HeapProfilerBackend(ga4gh.backend.FileSystemBackend):
-    def __init__(self, dataDir, variantSetClass):
+    def __init__(self, dataDir):
         super(HeapProfilerBackend, self).__init__(dataDir)
         self.profiler = guppy.hpy()
 

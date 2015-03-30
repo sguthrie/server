@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 
 import unittest
 
+import ga4gh.datamodel.reads as reads
 import ga4gh.datamodel.variants as variants
 
 
@@ -52,10 +53,10 @@ class TestSimulatedVariantSet(unittest.TestCase):
         self.assertEqual(
             self.variantDensity, self.simulatedVariantSet._variantDensity)
         self.assertEqual(
-            self.variantSetId, self.simulatedVariantSet._variantSetId)
+            self.variantSetId, self.simulatedVariantSet._id)
         self.assertEqual(
-            self.simulatedVariantSet._created,
-            self.simulatedVariantSet._updated)
+            self.simulatedVariantSet.getCreationTime(),
+            self.simulatedVariantSet.getUpdatedTime())
 
     def testGetVariants(self):
         # calling getVariants should produce the expected results
@@ -101,3 +102,15 @@ class TestSimulatedVariantSet(unittest.TestCase):
                 for field in timeDependentFields:
                     setattr(variant, field, 0)
         self.assertEqual(variantListOne, variantListTwo)
+
+
+class TestSimulatedReadGroupSet(unittest.TestCase):
+    """
+    Test properties of the simulated ReadGroupSet
+    """
+    def testCreation(self):
+        readGroupSetId = "readGroupSetId"
+        simulatedReadGroupSet = reads.SimulatedReadGroupSet(readGroupSetId)
+        for readGroup in simulatedReadGroupSet.getReadGroups():
+            alignments = list(readGroup.getReadAlignments())
+            self.assertGreater(len(alignments), 0)

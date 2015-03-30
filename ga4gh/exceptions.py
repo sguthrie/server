@@ -33,7 +33,6 @@ def getServerError(exception):
     """
     assert not isinstance(exception, BaseServerException)
     serverException = ServerError()
-    serverException.message = str(exception)
     return serverException
 
 
@@ -143,6 +142,17 @@ class ObjectNotFoundException(NotFoundException):
     message = "The requested object was not found"
 
 
+class VariantSetNotFound(NotFoundException):
+    def __init__(self, variantSetId):
+        self.message = "The requested VariantSet '{}' was not found".format(
+            variantSetId)
+
+
+class ReadGroupNotFoundException(ObjectNotFoundException):
+    def __init__(self, readGroupId):
+        self.message = "readGroupId '{}' not found".format(readGroupId)
+
+
 class UnsupportedMediaTypeException(BaseServerException):
     httpStatus = 415
     message = "Unsupported media type"
@@ -192,6 +202,7 @@ class ServerError(BaseServerException):
     Superclass of all exceptions that indicate a bug has occured.
     """
     httpStatus = 500
+    message = "Internal Server Error"
 
 
 class ResponseValidationFailureException(ServerError):

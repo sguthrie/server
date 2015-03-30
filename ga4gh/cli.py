@@ -22,6 +22,7 @@ import ga4gh.frontend as frontend
 # http://avro.apache.org/docs/1.7.7/spec.html#schema_primitive
 # AVRO_LONG_MAX = (1 << 63) - 1
 # TODO in the meantime, this is the max value wormtable can handle
+# TODO change this now that wormtable has been removed?
 AVRO_LONG_MAX = (1 << 32) - 2
 
 
@@ -76,7 +77,9 @@ class RequestFactory(object):
         if self.args.callSetIds == []:
             request.callSetIds = []
         elif self.args.callSetIds == '*':
-            request.callSetIds = None
+            # For v0.5.1 the semantics are for the empty list to correspond
+            # to all calls. This should be set to None for v0.6
+            request.callSetIds = []
         else:
             request.callSetIds = self.args.callSetIds.split(",")
         setCommaSeparatedAttribute(request, self.args, 'variantSetIds')
@@ -344,7 +347,7 @@ class SearchVariantSetsRunner(AbstractSearchRunner):
         self._setRequest(request, args)
 
     def run(self):
-        self._run(self._httpClient.searchVariantSets, 'datasetId')
+        self._run(self._httpClient.searchVariantSets, 'id')
 
 
 class SearchVariantsRunner(AbstractSearchRunner):
@@ -574,9 +577,8 @@ def addVariantSearchOptions(parser):
     parser.add_argument(
         "--callSetIds", "-c", default=[],
         help="""Return variant calls which belong to call sets
-            with these IDs. Pass in IDs as a comma separated list (no spaces),
-            or '*' (with the single quotes!) to indicate 'all call sets'.
-            Omit this option to indicate 'no call sets'.
+            with these IDs. Pass in IDs as a comma separated list (no spaces).
+            Omit this option to indicate 'all call sets'.
             """)
     addStartArgument(parser)
     addEndArgument(parser)

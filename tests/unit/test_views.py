@@ -18,7 +18,7 @@ def setUp(self):
     config = {
         "DATA_SOURCE": "__SIMULATED__",
         "SIMULATED_BACKEND_RANDOM_SEED": 1111,
-        "SIMULATED_BACKEND_NUM_CALLS": 0,
+        "SIMULATED_BACKEND_NUM_CALLS": 1,
         "SIMULATED_BACKEND_VARIANT_DENSITY": 1.0,
         "SIMULATED_BACKEND_NUM_VARIANT_SETS": 1,
         # "DEBUG" : True
@@ -71,10 +71,20 @@ class TestFrontend(unittest.TestCase):
         request.datasetIds = datasetIds
         return self.sendRequest('/variantsets/search', request)
 
-    def sendCallSetsSearch(self, variantSetIds=[""]):
+    def sendCallSetsSearch(self):
+        response = self.sendVariantSetsSearch()
+        variantSets = protocol.GASearchVariantSetsResponse().fromJsonString(
+            response.data).variantSets
         request = protocol.GASearchCallSetsRequest()
-        request.variantSetIds = variantSetIds
+        request.variantSetIds = [variantSets[0].id]
         return self.sendRequest('/callsets/search', request)
+
+    def sendReadsSearch(self, readGroupIds=None):
+        if readGroupIds is None:
+            readGroupIds = ['aReadGroupSet:one']
+        request = protocol.GASearchReadsRequest()
+        request.readGroupIds = readGroupIds
+        return self.sendRequest('/reads/search', request)
 
     def test404sReturnJson(self):
         path = utils.applyVersion('/doesNotExist')
@@ -90,6 +100,7 @@ class TestFrontend(unittest.TestCase):
 
         assertHeaders(self.sendVariantsSearch())
         assertHeaders(self.sendVariantSetsSearch())
+        assertHeaders(self.sendReadsSearch())
         # TODO: Test other methods as they are implemented
 
     def verifySearchRouting(self, path, getDefined=False):
@@ -135,11 +146,8 @@ class TestFrontend(unittest.TestCase):
         self.assertEqual(405, self.app.get(path).status_code)
 
     def testRouteReads(self):
-        paths = ['/reads/search']
+        paths = ['/reads/search', '/readgroupsets/search']
         for path in paths:
-            versionedPath = utils.applyVersion(path)
-            self.assertEqual(404, self.app.post(versionedPath).status_code)
-        for path in ['/readgroupsets/search']:
             self.verifySearchRouting(path)
 
     def testRouteVariants(self):
@@ -171,7 +179,20 @@ class TestFrontend(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         responseData = protocol.GASearchCallSetsResponse.fromJsonString(
             response.data)
-        self.assertEqual(responseData.callSets, [])
+        self.assertEqual(len(responseData.callSets), 1)
+
+    def testReadsSearch(self):
+        response = self.sendReadsSearch()
+        self.assertEqual(200, response.status_code)
+        responseData = protocol.GASearchReadsResponse.fromJsonString(
+            response.data)
+        self.assertEqual(len(responseData.alignments), 2)
+        self.assertEqual(
+            responseData.alignments[0].id,
+            "aReadGroupSet:one:simulated0")
+        self.assertEqual(
+            responseData.alignments[1].id,
+            "aReadGroupSet:one:simulated1")
 
     def testWrongVersion(self):
         path = '/v0.1.2/variantsets/search'
