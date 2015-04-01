@@ -135,6 +135,12 @@ class RequestFactory(object):
         request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
 
+    def createSearchExpressionLevelRequest(self):
+        request = protocol.SearchExpressionLevelRequest()
+        #allow only a single ID for now
+        #setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
+        request.expressionLevelId = self.args.expressionLevelId
+        return request
 
 def getWorkarounds(args):
     if args.workarounds is None:
@@ -507,6 +513,32 @@ class SearchRnaQuantificationRunner(AbstractSearchRunner):
         print()
 
 
+class SearchExpressionLevelRunner(AbstractSearchRunner):
+    """
+    Runner class for the ExpressionLevel/search method
+    """
+    def __init__(self, args):
+        super(SearchExpressionLevelRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchExpressionLevelRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        if self._minimalOutput:
+            self._run(self._httpClient.searchExpressionLevel, 'id')
+        else:
+            results = self._httpClient.searchExpressionLevel(self._request)
+            for result in results:
+                self.printExpressionLevel(result)
+
+    def printExpressionLevel(self, expression):
+        print(
+            expression.annotationId, expression.expression,
+            expression.featureGroupId, expression.id,
+            expression.isNormalized, expression.rawReadCount,
+            expression.score, expression.units, sep="\t", end="\t")
+        print()
+
+
 class ListReferenceBasesRunner(AbstractSearchRunner):
     """
     Runner class for the references/{id}/bases method
@@ -808,6 +840,19 @@ def addRnaQuantificationSearchParserArguments(subparsers):
         help="The rnaQuantificationId to search over")
 
 
+def addExpressionLevelSearchParserArguments(subparsers):
+    parser = subparsers.add_parser(
+        "expressionlevel-search",
+        description="Search for feature expression",
+        help="Search for feature expression")
+    parser.set_defaults(runner=SearchExpressionLevelRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
+        "--expressionLevelId", default=None,
+        help="The expression level Id to search over")
+
+
 def addReferenceSetsGetParser(subparsers):
     parser = subparsers.add_parser(
         "referencesets-get",
@@ -856,6 +901,7 @@ def client_main(parser=None):
     addReferencesGetParser(subparsers)
     addReferencesBasesListParser(subparsers)
     addRnaQuantificationSearchParserArguments(subparsers)
+    addExpressionLevelSearchParserArguments(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

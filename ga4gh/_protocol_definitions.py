@@ -165,24 +165,29 @@ null, "doc": "", "type": ["null", "string"], "name": "name"},
         self.name = None
         self.readGroupId = None
 
-
 class ExpressionLevel(ProtocolElement):
     """
 The actual FPKM data for each feature.
     """
     _schemaSource = """
-{"namespace": "org.ga4gh", "type": "record", "name": "ExpressionLevel",
-"fields": [{"doc": "", "type": "string", "name": "id"}, {"doc": "",
-"type": "string", "name": "featureGroupId"}, {"doc": "", "type":
-"string", "name": "annotationId"}, {"doc": "", "type": "float",
-"name": "expression"}], "doc": ""}
+{"namespace": "org.ga4gh", "type": "record", "name":
+"ExpressionLevel", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "featureGroupId"},
+{"doc": "", "type": "string", "name": "annotationId"}, {"doc": "",
+"type": "float", "name": "rawReadCount"}, {"default": null, "doc": "",
+"type": ["null", "float"], "name": "expression"}, {"default": false,
+"doc": "", "type": ["null", "boolean"], "name": "isNormalized"},
+{"default": null, "doc": "", "type": ["null", {"symbols": ["FPKM",
+"RPM"], "doc": "", "type": "enum", "name": "ExpressionUnits"}],
+"name": "units"}, {"default": null, "doc": "", "type": ["null",
+"float"], "name": "score"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "annotationId",
-        "expression",
         "featureGroupId",
         "id",
+        "rawReadCount",
     ])
 
     @classmethod
@@ -195,13 +200,27 @@ The actual FPKM data for each feature.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['annotationId', 'expression', 'featureGroupId', 'id']
+    __slots__ = ['annotationId', 'expression', 'featureGroupId', 'id',
+                 'isNormalized', 'rawReadCount', 'score',
+                 'units']
 
     def __init__(self):
         self.annotationId = None
         self.expression = None
         self.featureGroupId = None
         self.id = None
+        self.isNormalized = False
+        self.rawReadCount = None
+        self.score = None
+        self.units = None
+
+
+class ExpressionUnits(object):
+    """
+Units for expression level
+    """
+    FPKM = "FPKM"
+    RPM = "RPM"
 
 
 class FeatureGroup(ProtocolElement):
@@ -1932,6 +1951,86 @@ Details of the read counts.
         self.uniqueSpliceCount = None
 
 
+class SearchExpressionLevelRequest(SearchRequest):
+    """
+This request maps to the body of 'POST /expressionlevel/search'
+as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"SearchExpressionLevelRequest", "fields": [{"default": null, "doc":
+"", "type": ["null", "string"], "name": "expressionLevelId"},
+{"default": null, "doc": "", "type": ["null", "int"], "name":
+"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "pageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['expressionLevelId', 'pageSize', 'pageToken']
+
+    def __init__(self):
+        self.expressionLevelId = None
+        self.pageSize = None
+        self.pageToken = None
+
+
+class SearchExpressionLevelResponse(SearchResponse):
+    """
+This is the response from 'POST /expressionlevel/search' expressed as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"SearchExpressionLevelResponse", "fields": [{"default": [], "doc": "",
+"type": {"items": {"doc": "", "type": "record", "name":
+"ExpressionLevel", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "featureGroupId"},
+{"doc": "", "type": "string", "name": "annotationId"}, {"doc": "",
+"type": "float", "name": "rawReadCount"}, {"default": null, "doc": "",
+"type": ["null", "float"], "name": "expression"}, {"default": false,
+"doc": "", "type": ["null", "boolean"], "name": "isNormalized"},
+{"default": null, "doc": "", "type": ["null", {"symbols": ["FPKM",
+"RPM"], "doc": "", "type": "enum", "name": "ExpressionUnits"}],
+"name": "units"}, {"default": null, "doc": "", "type": ["null",
+"float"], "name": "score"}]}, "type": "array"}, "name":
+"expressionLevel"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "expressionLevel"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'expressionLevel': ExpressionLevel,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'expressionLevel': ExpressionLevel,
+        }
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['expressionLevel', 'nextPageToken']
+
+    def __init__(self):
+        self.expressionLevel = []
+        self.nextPageToken = None
+
+
 class SearchRnaQuantificationRequest(SearchRequest):
     """
 This request maps to the body of 'POST /rnaquantification/search'
@@ -2030,6 +2129,9 @@ postMethods = \
      ('/callsets/search',
       GASearchCallSetsRequest,
       GASearchCallSetsResponse),
+      ('/expressionlevel/search',
+      SearchExpressionLevelRequest,
+      SearchExpressionLevelResponse),
      ('/rnaquantification/search',
       SearchRnaQuantificationRequest,
       SearchRnaQuantificationResponse)]

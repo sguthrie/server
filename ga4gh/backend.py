@@ -183,6 +183,16 @@ class AbstractBackend(object):
             protocol.SearchRnaQuantificationResponse,
             self.rnaQuantificationGenerator)
 
+    def searchExpressionLevel(self, request):
+        """
+        Returns a SearchExpressionLevelResponse for the specified
+        SearchExpressionLevelRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchExpressionLevelRequest,
+            protocol.SearchExpressionLevelResponse,
+            self.expressionLevelGenerator)
+
     # Iterators over the data hieararchy
 
     def _topLevelObjectGenerator(self, request, idMap, idList):
@@ -338,7 +348,6 @@ class AbstractBackend(object):
             request, variantSet.getCallSetIdMap(),
             variantSet.getCallSetIds())
 
-
     def rnaQuantificationGenerator(self, request):
         """
         Returns a generator over the (rnaQuantification, nextPageToken) pairs defined
@@ -368,6 +377,9 @@ class AbstractBackend(object):
             rnaQuantification.readGroupId = rnaQuantData.readGroupId
             yield rnaQuantification, nextPageToken
             rnaQuantData = nextRnaQuantData
+
+    def expressionLevelGenerator(self, request):
+        pass
 
     def startProfile(self):
         """
