@@ -14,6 +14,7 @@ import pysam
 
 import ga4gh.protocol as protocol
 import ga4gh.exceptions as exceptions
+import ga4gh.datamodel as datamodel
 
 
 class SamCigar(object):
@@ -67,7 +68,7 @@ class SamFlags(object):
         flagAttr |= flag
 
 
-class AbstractReadGroupSet(object):
+class AbstractReadGroupSet(datamodel.DatamodelObject):
     """
     The base class of a read group set
     """
@@ -109,7 +110,7 @@ class SimulatedReadGroupSet(AbstractReadGroupSet):
         self._readGroups.append(readGroup)
 
 
-class HtslibReadGroupSet(AbstractReadGroupSet):
+class HtslibReadGroupSet(datamodel.PysamSanitizer, AbstractReadGroupSet):
     """
     Class representing a logical collection ReadGroups.
     """
@@ -207,7 +208,7 @@ class SimulatedReadGroup(AbstractReadGroup):
         return alignment
 
 
-class HtslibReadGroup(AbstractReadGroup):
+class HtslibReadGroup(datamodel.PysamSanitizer, AbstractReadGroup):
     """
     A readgroup based on htslib's reading of a given file
     """
@@ -231,6 +232,8 @@ class HtslibReadGroup(AbstractReadGroup):
             raise exceptions.BadReadsSearchRequestBothRefs()
         if referenceId is not None:
             referenceName = self._samFile.getrname(referenceId)
+        referenceName, start, end = self.sanitizeAlignmentFileFetch(
+                referenceName, start, end)
         # TODO deal with errors from htslib
         readAlignments = self._samFile.fetch(referenceName, start, end)
         for readAlignment in readAlignments:
@@ -251,11 +254,13 @@ class HtslibReadGroup(AbstractReadGroup):
         ret.alignment.position.referenceName = self._samFile.getrname(
             read.reference_id)
         ret.alignment.position.position = read.reference_start
+        ret.alignment.position.reverseStrand = False  # TODO fix this!
         ret.alignment.cigar = []
         for operation, length in read.cigar:
             gaCigarUnit = protocol.GACigarUnit()
             gaCigarUnit.operation = SamCigar.int2ga(operation)
             gaCigarUnit.operationLength = length
+            gaCigarUnit.referenceSequence = None  # TODO fix this!
             ret.alignment.cigar.append(gaCigarUnit)
         ret.duplicateFragment = SamFlags.isFlagSet(
             read.flag, SamFlags.DUPLICATE_FRAGMENT)
@@ -264,21 +269,28 @@ class HtslibReadGroup(AbstractReadGroup):
         ret.fragmentLength = read.template_length
         ret.fragmentName = read.query_name
         ret.id = "{}:{}".format(self._id, read.query_name)
-        ret.info = dict(read.tags)
-        ret.nextMatePosition = protocol.GAPosition()
-        ret.nextMatePosition.position = read.next_reference_start
+        ret.info = {key: [str(value)] for key, value in read.tags}
+        ret.nextMatePosition = None
         if read.next_reference_id != -1:
-            ret.nextMatePosition.referenceName = \
-                self._samFile.getrname(read.next_reference_id)
-        ret.numberReads = SamFlags.isFlagSet(
-            read.flag, SamFlags.NUMBER_READS)
+            ret.nextMatePosition = protocol.GAPosition()
+            ret.nextMatePosition.referenceName = self._samFile.getrname(
+                read.next_reference_id)
+            ret.nextMatePosition.position = read.next_reference_start
+            ret.nextMatePosition.reverseStrand = False  # TODO fix this!
+        # TODO Is this the correct mapping between numberReads and
+        # sam flag 0x1? What about the mapping between numberReads
+        # and 0x40 and 0x80?
+        ret.numberReads = None
+        ret.readNumber = None
+        if SamFlags.isFlagSet(read.flag, SamFlags.NUMBER_READS):
+            ret.numberReads = 2
+            if SamFlags.isFlagSet(read.flag, SamFlags.READ_NUMBER_ONE):
+                ret.readNumber = 0
+            elif SamFlags.isFlagSet(read.flag, SamFlags.READ_NUMBER_TWO):
+                ret.readNumber = 1
         ret.properPlacement = SamFlags.isFlagSet(
             read.flag, SamFlags.PROPER_PLACEMENT)
         ret.readGroupId = self._id
-        ret.readNumber = (SamFlags.isFlagSet(
-            read.flag, SamFlags.READ_NUMBER_ONE) and
-            SamFlags.isFlagSet(
-                read.flag, SamFlags.READ_NUMBER_TWO))
         ret.secondaryAlignment = SamFlags.isFlagSet(
             read.flag, SamFlags.SECONDARY_ALIGNMENT)
         ret.supplementaryAlignment = SamFlags.isFlagSet(
