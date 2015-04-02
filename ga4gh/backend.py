@@ -379,7 +379,31 @@ class AbstractBackend(object):
             rnaQuantData = nextRnaQuantData
 
     def expressionLevelGenerator(self, request):
-        pass
+        expressionLevelId = request.expressionLevelId
+        currentIndex = 0
+        if request.pageToken is not None:
+            currentIndex, = self.parsePageToken(request.pageToken, 1)
+        for rnaQuantificationId in self._rnaQuantificationIds:
+            rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
+            expressionLevelIterator = rnaQuant.getExpressionLevel(expressionLevelId)
+            expressionLevelData = next(expressionLevelIterator, None)
+            while expressionLevelData is not None:
+                nextExpressionLevelData = next(expressionLevelIterator, None)
+                nextPageToken = None
+                if nextExpressionLevelData is not None:
+                    currentIndex += 1
+                    nextPageToken = "{}".format(currentIndex)
+                expressionLevel = protocol.ExpressionLevel()
+                expressionLevel.annotationId = expressionLevelData.annotationId
+                expressionLevel.expression = expressionLevelData.expression
+                expressionLevel.featureGroupId = expressionLevelData.featureGroupId
+                expressionLevel.id = expressionLevelData.id
+                expressionLevel.isNormalized = expressionLevelData.isNormalized
+                expressionLevel.rawReadCount = expressionLevelData.rawReadCount
+                expressionLevel.score = expressionLevelData.score
+                expressionLevel.units = expressionLevelData.units
+                yield expressionLevel, nextPageToken
+                expressionLevelData = nextExpressionLevelData
 
     def startProfile(self):
         """

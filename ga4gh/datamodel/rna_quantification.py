@@ -23,6 +23,7 @@ class RNASeqResult(object):
         self._rnaQuantificationFile = os.path.join(rnaQuantDataPath, "rnaseq.table")
         self._characterizationFile = os.path.join(rnaQuantDataPath, "dist.table")
         self._readCountFile = os.path.join(rnaQuantDataPath, "counts.table")
+        self._expressionLevelFile = os.path.join(rnaQuantDataPath, "expression.table")
 
     def convertCharacterization(self, record):
         readCharacterization = protocol.Characterization
@@ -90,6 +91,30 @@ class RNASeqResult(object):
         if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.convertRnaQuantification(fields)
 
+    def convertExpressionLevel(self, record):
+        expressionLevel = protocol.ExpressionLevel()
+        expressionLevel.id = record[0]
+        expressionLevel.annotationId = record[1]
+        expressionLevel.expression = record[2]
+        expressionLevel.featureGroupId = record[3]
+        expressionLevel.isNormalized = record[4]
+        expressionLevel.rawReadCount = record[5]
+        expressionLevel.score = record[6]
+        expressionLevel.units = record[7]
+
+        return expressionLevel
+
+    def getExpressionLevel(self, expressionLevelId):
+        """
+        input is tab file with no header.  Columns are:
+        annotationId, expression, featureGroupId, id,
+        isNormalized, rawReadCount, score, units
+        """
+        expressionLevelData = open(self._expressionLevelFile, "r")
+        for expressionData in expressionLevelData.readlines():
+            fields = expressionData.strip().split('\t')
+            if expressionLevelId is None or fields[0] == expressionLevelId:
+                yield self.convertExpressionLevel(fields)
 
 class SimulatedRNASeqResult(object):
     """
