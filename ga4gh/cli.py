@@ -140,6 +140,7 @@ class RequestFactory(object):
         #allow only a single ID for now
         #setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
         request.expressionLevelId = self.args.expressionLevelId
+        request.featureGroupId = self.args.featureGroupId
         return request
 
 def getWorkarounds(args):
@@ -851,6 +852,12 @@ def addExpressionLevelSearchParserArguments(subparsers):
     parser.add_argument(
         "--expressionLevelId", default=None,
         help="The expression level Id to search over")
+    parser.add_argument(
+        "--rnaQuantificationId", default=None,
+        help="The RNA Quantification Id to search over")
+    parser.add_argument(
+        "--featureGroupId", default=None,
+        help="The feature group Id to search over")
 
 
 def addReferenceSetsGetParser(subparsers):

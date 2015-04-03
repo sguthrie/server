@@ -1960,9 +1960,10 @@ as JSON.
 {"namespace": "org.ga4gh", "type": "record", "name":
 "SearchExpressionLevelRequest", "fields": [{"default": null, "doc":
 "", "type": ["null", "string"], "name": "expressionLevelId"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"featureGroupId"}, {"default": null, "doc": "", "type": ["null",
+"int"], "name": "pageSize"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -1977,10 +1978,11 @@ as JSON.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['expressionLevelId', 'pageSize', 'pageToken']
+    __slots__ = ['expressionLevelId', 'featureGroupId', 'pageSize', 'pageToken']
 
     def __init__(self):
         self.expressionLevelId = None
+        self.featureGroupId = None
         self.pageSize = None
         self.pageToken = None
 
