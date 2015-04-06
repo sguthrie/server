@@ -1962,8 +1962,10 @@ as JSON.
 "", "type": ["null", "string"], "name": "expressionLevelId"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
 "featureGroupId"}, {"default": null, "doc": "", "type": ["null",
-"int"], "name": "pageSize"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "pageToken"}], "doc": ""}
+"string"], "name": "rnaQuantificationId"}, {"default": null, "doc":
+"", "type": ["null", "int"], "name": "pageSize"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "pageToken"}], "doc":
+""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -1978,13 +1980,15 @@ as JSON.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['expressionLevelId', 'featureGroupId', 'pageSize', 'pageToken']
+    __slots__ = ['expressionLevelId', 'featureGroupId', 'pageSize', 'pageToken',
+                 'rnaQuantificationId']
 
     def __init__(self):
         self.expressionLevelId = None
         self.featureGroupId = None
         self.pageSize = None
         self.pageToken = None
+        self.rnaQuantificationId = None
 
 
 class SearchExpressionLevelResponse(SearchResponse):

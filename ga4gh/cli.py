@@ -141,6 +141,7 @@ class RequestFactory(object):
         #setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
         request.expressionLevelId = self.args.expressionLevelId
         request.featureGroupId = self.args.featureGroupId
+        request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
 
 def getWorkarounds(args):

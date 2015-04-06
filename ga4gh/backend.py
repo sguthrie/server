@@ -379,15 +379,18 @@ class AbstractBackend(object):
             rnaQuantData = nextRnaQuantData
 
     def expressionLevelGenerator(self, request):
-        #TODO: enable search for a feature group
-        #TODO: enable search for all in rna quantification
         expressionLevelId = request.expressionLevelId
         featureGroupId = request.featureGroupId
+        rnaQuantificationId = request.rnaQuantificationId
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = self.parsePageToken(request.pageToken, 1)
-        for rnaQuantificationId in self._rnaQuantificationIds:
-            rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
+        if rnaQuantificationId is not None:
+            rnaQuantificationIds = [rnaQuantificationId]
+        else:
+            rnaQuantificationIds = self._rnaQuantificationIds
+        for rnaQuantId in rnaQuantificationIds:
+            rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
             expressionLevelIterator = rnaQuant.getExpressionLevel(expressionLevelId, featureGroupId)
             expressionLevelData = next(expressionLevelIterator, None)
             while expressionLevelData is not None:
