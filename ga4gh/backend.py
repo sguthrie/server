@@ -544,6 +544,7 @@ class FileSystemBackend(AbstractBackend):
                 for readGroup in readGroupSet.getReadGroups():
                     self._readGroupIdMap[readGroup.getId()] = readGroup
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
+        self._readGroupIds = sorted(self._readGroupIdMap.keys())
 
         #Rna Quantification
         rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
