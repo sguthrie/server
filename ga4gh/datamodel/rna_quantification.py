@@ -13,6 +13,8 @@ import ga4gh.protocol as protocol
 """
 TODO: Would be nice to just use the csv module to read inputs and have headers in files for clarity
       and to eliminate the whole record[N] absurdity.
+      
+      Additionally, characterization and read counts doesn't have an access point.
 """
 class RNASeqResult(object):
     """
