@@ -190,3 +190,30 @@ class SimulatedRNASeqResult(object):
         fields = quantData.strip().split('\t')
         if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.generateRnaQuantification()
+
+    def generateExpressionLevel(self):
+        """
+            Currently just returns default values.
+        """
+        expressionLevel = protocol.ExpressionLevel
+
+        return expressionLevel
+
+    def getExpressionLevel(self, expressionLevelId, featureGroupId):
+        """
+        input is tab file with no header.  Columns are:
+        annotationId, expression, featureGroupId, id,
+        isNormalized, rawReadCount, score, units
+
+        expressionLevelId is not None: return only the specific expressionLevel object
+        featureGroupId is not None: return all in that group
+        """
+        expressionLevelData = open(self._expressionLevelFile, "r")
+        for expressionData in expressionLevelData.readlines():
+            fields = expressionData.strip().split('\t')
+            if featureGroupId is not None:
+                if fields[3] == featureGroupId:
+                    if expressionLevelId is None or fields[0] == expressionLevelId:
+                        yield self.generateExpressionLevel(fields)
+            elif expressionLevelId is None or fields[0] == expressionLevelId:
+                yield self.generateExpressionLevel(fields)
