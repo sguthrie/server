@@ -109,8 +109,8 @@ class AbstractBackend(object):
         GASearchReadGroupSetsRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchReadGroupSetsRequest,
-            protocol.GASearchReadGroupSetsResponse,
+            request, protocol.SearchReadGroupSetsRequest,
+            protocol.SearchReadGroupSetsResponse,
             self.readGroupSetsGenerator)
 
     def searchReads(self, request):
@@ -119,8 +119,8 @@ class AbstractBackend(object):
         GASearchReadsRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchReadsRequest,
-            protocol.GASearchReadsResponse,
+            request, protocol.SearchReadsRequest,
+            protocol.SearchReadsResponse,
             self.readsGenerator)
 
     def searchReferenceSets(self, request):
@@ -129,8 +129,8 @@ class AbstractBackend(object):
         GASearchReferenceSetsRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchReferenceSetsRequest,
-            protocol.GASearchReferenceSetsResponse,
+            request, protocol.SearchReferenceSetsRequest,
+            protocol.SearchReferenceSetsResponse,
             self.referenceSetsGenerator)
 
     def searchReferences(self, request):
@@ -139,8 +139,8 @@ class AbstractBackend(object):
         GASearchReferencesRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchReferencesRequest,
-            protocol.GASearchReferencesResponse,
+            request, protocol.SearchReferencesRequest,
+            protocol.SearchReferencesResponse,
             self.referencesGenerator)
 
     def searchVariantSets(self, request):
@@ -149,8 +149,8 @@ class AbstractBackend(object):
         GASearchVariantSetsRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchVariantSetsRequest,
-            protocol.GASearchVariantSetsResponse,
+            request, protocol.SearchVariantSetsRequest,
+            protocol.SearchVariantSetsResponse,
             self.variantSetsGenerator)
 
     def searchVariants(self, request):
@@ -159,8 +159,8 @@ class AbstractBackend(object):
         GASearchVariantsRequest object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchVariantsRequest,
-            protocol.GASearchVariantsResponse,
+            request, protocol.SearchVariantsRequest,
+            protocol.SearchVariantsResponse,
             self.variantsGenerator)
 
     def searchCallSets(self, request):
@@ -169,8 +169,8 @@ class AbstractBackend(object):
         GASearchCallSetsRequest Object.
         """
         return self.runSearchRequest(
-            request, protocol.GASearchCallSetsRequest,
-            protocol.GASearchCallSetsResponse,
+            request, protocol.SearchCallSetsRequest,
+            protocol.SearchCallSetsResponse,
             self.callSetsGenerator)
 
     def searchRnaQuantification(self, request):
@@ -259,7 +259,7 @@ class AbstractBackend(object):
             startPosition, equalPositionsToSkip = self.parsePageToken(
                 request.pageToken, 2)
         iterator = readGroup.getReadAlignments(
-            request.referenceName, request.referenceId, startPosition,
+            request.referenceId, startPosition,
             request.end)
         readAlignment = next(iterator, None)
         if request.pageToken is not None:
