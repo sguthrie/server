@@ -312,6 +312,51 @@ null, "doc": "", "type": ["null", "string"], "name": "name"}, {"doc":
         self.variantSetIds = []
 
 
+class Characterization(ProtocolElement):
+    """
+Read characterization data.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"Characterization", "fields": [{"doc": "", "type": "string", "name":
+"analysisId"}, {"doc": "", "type": "float", "name": "complexity"},
+{"doc": "", "type": "float", "name": "fractionMapped"}, {"doc": "",
+"type": "float", "name": "intronicFraction"}, {"doc": "", "type":
+"float", "name": "exonicFraction"}, {"doc": "", "type": "float",
+"name": "intergenicFraction"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "analysisId",
+        "complexity",
+        "exonicFraction",
+        "fractionMapped",
+        "intergenicFraction",
+        "intronicFraction",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['analysisId', 'complexity', 'exonicFraction', 'fractionMapped',
+                 'intergenicFraction', 'intronicFraction']
+
+    def __init__(self):
+        self.analysisId = None
+        self.complexity = None
+        self.exonicFraction = None
+        self.fractionMapped = None
+        self.intergenicFraction = None
+        self.intronicFraction = None
+
+
 class CigarOperation(object):
     """
 An enum for the different types of CIGAR alignment operations that exist.
@@ -691,6 +736,109 @@ A general exception type.
     def __init__(self):
         self.errorCode = -1
         self.message = None
+
+
+class ExpressionLevel(ProtocolElement):
+    """
+The actual FPKM data for each feature.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"ExpressionLevel", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "featureGroupId"},
+{"doc": "", "type": "string", "name": "annotationId"}, {"doc": "",
+"type": "float", "name": "rawReadCount"}, {"default": null, "doc": "",
+"type": ["null", "float"], "name": "expression"}, {"default": false,
+"doc": "", "type": ["null", "boolean"], "name": "isNormalized"},
+{"default": null, "doc": "", "type": ["null", {"symbols": ["FPKM",
+"RPM"], "doc": "", "type": "enum", "name": "ExpressionUnits"}],
+"name": "units"}, {"default": null, "doc": "", "type": ["null",
+"float"], "name": "score"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "annotationId",
+        "featureGroupId",
+        "id",
+        "rawReadCount",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['annotationId', 'expression', 'featureGroupId', 'id',
+                 'isNormalized', 'rawReadCount', 'score',
+                 'units']
+
+    def __init__(self):
+        self.annotationId = None
+        self.expression = None
+        self.featureGroupId = None
+        self.id = None
+        self.isNormalized = False
+        self.rawReadCount = None
+        self.score = None
+        self.units = None
+
+
+class ExpressionUnits(object):
+    """
+Units for expression level
+    """
+    FPKM = "FPKM"
+    RPM = "RPM"
+
+
+class FeatureGroup(ProtocolElement):
+    """
+Identifying information for annotated features.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name": "FeatureGroup",
+"fields": [{"doc": "", "type": "string", "name": "id"}, {"doc": "",
+"type": "string", "name": "analysisId"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "name"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "description"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "created"},
+{"default": null, "doc": "", "type": ["null", "long"], "name":
+"updated"}, {"default": {}, "doc": "", "type": {"values": {"items":
+"string", "type": "array"}, "type": "map"}, "name": "info"}], "doc":
+""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "analysisId",
+        "id",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['analysisId', 'created', 'description', 'id', 'info', 'name',
+                 'updated']
+
+    def __init__(self):
+        self.analysisId = None
+        self.created = None
+        self.description = None
+        self.id = None
+        self.info = {}
+        self.name = None
+        self.updated = None
 
 
 class GeneticSex(object):
@@ -1542,6 +1690,49 @@ The response to the Beacon query
         self.frequencies = []
         self.info = None
         self.observed = None
+
+
+class RnaQuantification(ProtocolElement):
+    """
+Top level identifying information
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"RnaQuantification", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "name"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "description"}, {"doc": "", "type": "string",
+"name": "readGroupId"}, {"default": [], "doc": "", "type": {"items":
+"string", "type": "array"}, "name": "programIds"}, {"default": [],
+"doc": "", "type": {"items": "string", "type": "array"}, "name":
+"annotationIds"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "id",
+        "readGroupId",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['annotationIds', 'description', 'id', 'name', 'programIds',
+                 'readGroupId']
+
+    def __init__(self):
+        self.annotationIds = []
+        self.description = None
+        self.id = None
+        self.name = None
+        self.programIds = []
+        self.readGroupId = None
 
 
 class Sample(ProtocolElement):
