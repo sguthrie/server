@@ -109,7 +109,7 @@ class RNASeqResult(object):
     def getExpressionLevel(self, expressionLevelId, featureGroupId):
         """
         input is tab file with no header.  Columns are:
-        annotationId, expression, featureGroupId, id,
+        id, annotationId, expression, featureGroupId,
         isNormalized, rawReadCount, score, units
         
         expressionLevelId is not None: return only the specific expressionLevel object

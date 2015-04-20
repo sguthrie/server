@@ -393,7 +393,7 @@ class AbstractBackend(object):
             rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
             expressionLevelIterator = rnaQuant.getExpressionLevel(expressionLevelId, featureGroupId)
             expressionLevelData = next(expressionLevelIterator, None)
-            while expressionLevelData is not None:
+            while expressionLevelData is not None and currentIndex < self._defaultPageSize:
                 nextExpressionLevelData = next(expressionLevelIterator, None)
                 nextPageToken = None
                 if nextExpressionLevelData is not None:
