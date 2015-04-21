@@ -423,7 +423,7 @@ class AbstractBackend(object):
             raise exceptions.RnaQuantificationNotFoundException(rnaQuantificationId)
         currentIndex = 0
         if request.pageToken is not None:
-            currentIndex, = self.parsePageToken(request.pageToken, 1)
+            currentIndex, = _parsePageToken(request.pageToken, 1)
         rnaQuantIterator = rnaQuant.getRnaQuantification(rnaQuantificationId)
         rnaQuantData = next(rnaQuantIterator, None)
         while rnaQuantData is not None:
@@ -447,7 +447,7 @@ class AbstractBackend(object):
         rnaQuantificationId = request.rnaQuantificationId
         currentIndex = 0
         if request.pageToken is not None:
-            currentIndex, = self.parsePageToken(request.pageToken, 1)
+            currentIndex, = _parsePageToken(request.pageToken, 1)
         if rnaQuantificationId is not None:
             rnaQuantificationIds = [rnaQuantificationId]
         else:
