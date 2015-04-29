@@ -3312,6 +3312,84 @@ This is the response from 'POST /rnaquantification/search' expressed as JSON.
         self.rnaQuantification = []
         self.nextPageToken = None
 
+
+class SearchFeatureGroupRequest(SearchRequest):
+    """
+This request maps to the body of 'POST /featuregroup/search'
+as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"SearchFeatureGroupRequest", "fields": [{"default": null,
+"doc": "", "type": ["null", "string"], "name": "featureGroupId"},
+{"default": null, "doc": "", "type": ["null", "int"], "name":
+"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "pageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['featureGroupId', 'pageSize', 'pageToken']
+
+    def __init__(self):
+        self.featureGroupId = None
+        self.pageSize = None
+        self.pageToken = None
+
+
+class SearchFeatureGroupResponse(SearchResponse):
+    """
+This is the response from 'POST /featuregroup/search' expressed as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"SearchFeatureGroupResponse", "fields": [{"default": [],
+"doc": "", "type": {"items": {"doc": "", "type": "record", "name":
+"FeatureGroup", "fields": [{"doc": "", "type": "string", "name": "id"},
+{"doc": "", "type": "string", "name": "analysisId"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "name"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "description"}, {"default": null, "doc":
+"", "type": ["null", "long"], "name": "created"}, {"default": null, "doc": "",
+"type": ["null", "long"], "name": "updated"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type": "map"},
+"name": "info"}]}, "type": "array"}, "name": "featureGroup"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "nextPageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "featureGroup"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'featureGroup': FeatureGroup,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'featureGroup': FeatureGroup,
+        }
+        return embeddedTypes[fieldName]
+
+    __slots__ = ['featureGroup', 'nextPageToken']
+
+    def __init__(self):
+        self.featureGroup = []
+        self.nextPageToken = None
+
+
 postMethods = \
     [('/analyses/search',
       SearchAnalysesRequest,
@@ -3322,6 +3400,9 @@ postMethods = \
      ('/experiments/search',
       SearchExperimentsRequest,
       SearchExperimentsResponse),
+     ('/featuregroup/search',
+      SearchFeatureGroupRequest,
+      SearchFeatureGroupResponse),
      ('/individualgroups/search',
       SearchIndividualGroupsRequest,
       SearchIndividualGroupsResponse),

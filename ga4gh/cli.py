@@ -145,6 +145,14 @@ class RequestFactory(object):
         return request
 
 
+    def createSearchFeatureGroupRequest(self):
+        request = protocol.SearchFeatureGroupRequest()
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'featureGroupId')
+        request.featureGroupId = self.args.featureGroupId
+        return request
+
+
 def getWorkarounds(args):
     if args.workarounds is None:
         return set()
@@ -542,6 +550,29 @@ class SearchExpressionLevelRunner(AbstractSearchRunner):
         print()
 
 
+class SearchFeatureGroupRunner(AbstractSearchRunner):
+    """
+    Runner class for the featuregroup/search method
+    """
+    def __init__(self, args):
+        super(SearchFeatureGroupRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchFeatureGroupRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        if self._minimalOutput:
+            self._run(self._httpClient.searchFeatureGroup, 'id')
+        else:
+            results = self._httpClient.searchFeatureGroup(self._request)
+            for result in results:
+                self.printFeatureGroup(result)
+
+    def printFeatureGroup(self, featureGroup):
+        print(
+            featureGroup.analysisId, featureGroup.name, sep="\t", end="\t")
+        print()
+
+
 class ListReferenceBasesRunner(AbstractSearchRunner):
     """
     Runner class for the references/{id}/bases method
@@ -862,6 +893,19 @@ def addExpressionLevelSearchParserArguments(subparsers):
         help="The feature group Id to search over")
 
 
+def addFeatureGroupSearchParserArguments(subparsers):
+    parser = subparsers.add_parser(
+        "featuregroup-search",
+        description="Search for feature group",
+        help="Search for feature group")
+    parser.set_defaults(runner=SearchFeatureGroupRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
+        "--featureGroupId", default=None,
+        help="The feature group Id to search over")
+
+
 def addReferenceSetsGetParser(subparsers):
     parser = subparsers.add_parser(
         "referencesets-get",
@@ -911,6 +955,7 @@ def client_main(parser=None):
     addReferencesBasesListParser(subparsers)
     addRnaQuantificationSearchParserArguments(subparsers)
     addExpressionLevelSearchParserArguments(subparsers)
+    addFeatureGroupSearchParserArguments(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

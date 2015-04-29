@@ -337,6 +337,16 @@ class AbstractBackend(object):
             protocol.SearchExpressionLevelResponse,
             self.expressionLevelGenerator)
 
+    def searchFeatureGroup(self, request):
+        """
+        Returns a SearchFeatureGroupResponse for the specified
+        SearchFeatureGroupRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchFeatureGroupRequest,
+            protocol.SearchFeatureGroupResponse,
+            self.featureGroupGenerator)
+
     # Iterators over the data hieararchy
 
     def _topLevelObjectGenerator(self, request, idMap, idList):
@@ -465,6 +475,34 @@ class AbstractBackend(object):
                 expressionLevel.units = expressionLevelData.units
                 yield expressionLevel, nextPageToken
                 expressionLevelData = nextExpressionLevelData
+
+    def featureGroupGenerator(self, request):
+        featureGroupId = request.featureGroupId
+        currentIndex = 0
+        if request.pageToken is not None:
+            currentIndex, = _parsePageToken(request.pageToken, 1)
+        for rnaQuantId in self._rnaQuantificationIds:
+            rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
+            featureGroupIterator = rnaQuant.getFeatureGroup(
+                featureGroupId)
+            featureGroupData = next(featureGroupIterator, None)
+            while (featureGroupData is not None and
+                    currentIndex < self._defaultPageSize):
+                nextFeatureGroupData = next(featureGroupIterator, None)
+                nextPageToken = None
+                if nextFeatureGroupData is not None:
+                    currentIndex += 1
+                    nextPageToken = "{}".format(currentIndex)
+                featureGroup = protocol.FeatureGroup()
+                featureGroup.analysisId = featureGroupData.analysisId
+                featureGroup.created = featureGroupData.created
+                featureGroup.description = featureGroupData.description
+                featureGroup.id = featureGroupData.id
+                featureGroup.info = featureGroupData.info
+                featureGroup.name = featureGroupData.name
+                featureGroup.updated = featureGroupData.updated
+                yield featureGroup, nextPageToken
+                featureGroupData = nextFeatureGroupData
 
     def startProfile(self):
         """

@@ -268,3 +268,11 @@ class HttpClient(object):
         return self.runSearchRequest(
             protocolRequest, "expressionlevel",
             protocol.SearchExpressionLevelResponse)
+
+    def searchFeatureGroup(self, protocolRequest):
+        """
+        Returns an iterator over the FeatureGroup objects from the server
+        """
+        return self.runSearchRequest(
+            protocolRequest, "featuregroup",
+            protocol.SearchFeatureGroupResponse)
