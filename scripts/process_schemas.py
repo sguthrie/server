@@ -424,8 +424,9 @@ def main():
     # TODO is this the right approach? Maybe we should be noisy be
     # default and add in an option to be quiet.
     parser.add_argument('--verbose', '-v', action='count', default=0)
-    parser.add_argument('--local_avdl', help="The path to local avdl tarball",
-        default=None)
+    parser.add_argument(
+            '--local_avdl', help="The path to local avdl tarball",
+            default=None)
     # We don't support Python 3 right now because the Avro API is
     # different between the different versions.
     if sys.version_info >= (3, 0):

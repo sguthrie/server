@@ -413,14 +413,15 @@ class AbstractBackend(object):
 
     def rnaQuantificationGenerator(self, request):
         """
-        Returns a generator over the (rnaQuantification, nextPageToken) pairs defined
-        by the specified request.
+        Returns a generator over the (rnaQuantification, nextPageToken) pairs
+        defined by the specified request.
         """
         rnaQuantificationId = request.rnaQuantificationId
         try:
             rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
         except KeyError:
-            raise exceptions.RnaQuantificationNotFoundException(rnaQuantificationId)
+            raise exceptions.RnaQuantificationNotFoundException(
+                rnaQuantificationId)
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = _parsePageToken(request.pageToken, 1)
@@ -454,9 +455,11 @@ class AbstractBackend(object):
             rnaQuantificationIds = self._rnaQuantificationIds
         for rnaQuantId in rnaQuantificationIds:
             rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
-            expressionLevelIterator = rnaQuant.getExpressionLevel(expressionLevelId, featureGroupId)
+            expressionLevelIterator = rnaQuant.getExpressionLevel(
+                expressionLevelId, featureGroupId)
             expressionLevelData = next(expressionLevelIterator, None)
-            while expressionLevelData is not None and currentIndex < self._defaultPageSize:
+            while (expressionLevelData is not None and
+                    currentIndex < self._defaultPageSize):
                 nextExpressionLevelData = next(expressionLevelIterator, None)
                 nextPageToken = None
                 if nextExpressionLevelData is not None:
@@ -465,7 +468,8 @@ class AbstractBackend(object):
                 expressionLevel = protocol.ExpressionLevel()
                 expressionLevel.annotationId = expressionLevelData.annotationId
                 expressionLevel.expression = expressionLevelData.expression
-                expressionLevel.featureGroupId = expressionLevelData.featureGroupId
+                expressionLevel.featureGroupId = (
+                    expressionLevelData.featureGroupId)
                 expressionLevel.id = expressionLevelData.id
                 expressionLevel.isNormalized = expressionLevelData.isNormalized
                 expressionLevel.rawReadCount = expressionLevelData.rawReadCount
@@ -609,7 +613,7 @@ class FileSystemBackend(AbstractBackend):
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
 
-        #Rna Quantification
+        # Rna Quantification
         rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
         for rnaQuantId in os.listdir(rnaQuantDir):
             relativePath = os.path.join(rnaQuantDir, rnaQuantId)
@@ -617,5 +621,5 @@ class FileSystemBackend(AbstractBackend):
                 rnaQuantification = rna_quantification.RNASeqResult(
                     rnaQuantId, relativePath)
                 self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
-        self._rnaQuantificationIds = sorted(self._rnaQuantificationIdMap.keys())
-
+        self._rnaQuantificationIds = sorted(
+            self._rnaQuantificationIdMap.keys())

@@ -10,22 +10,28 @@ import os
 
 import ga4gh.protocol as protocol
 
+
 """
-TODO: Would be nice to just use the csv module to read inputs and have headers in files for clarity
-      and to eliminate the whole record[N] absurdity.
-      
-      Additionally, characterization and read counts doesn't have an access point.
+TODO: Would be nice to just use the csv module to read inputs and have headers
+in files for clarity and to eliminate the whole record[N] absurdity.
+
+Additionally, characterization and read counts doesn't have an access point.
 """
+
+
 class RNASeqResult(object):
     """
     Class representing a single RnaQuantification in the GA4GH data model.
     """
     def __init__(self, rnaQuantificationId, rnaQuantDataPath):
         self._rnaQuantificationId = rnaQuantificationId
-        self._rnaQuantificationFile = os.path.join(rnaQuantDataPath, "rnaseq.table")
-        self._characterizationFile = os.path.join(rnaQuantDataPath, "dist.table")
+        self._rnaQuantificationFile = os.path.join(
+            rnaQuantDataPath, "rnaseq.table")
+        self._characterizationFile = os.path.join(
+            rnaQuantDataPath, "dist.table")
         self._readCountFile = os.path.join(rnaQuantDataPath, "counts.table")
-        self._expressionLevelFile = os.path.join(rnaQuantDataPath, "expression.table")
+        self._expressionLevelFile = os.path.join(
+            rnaQuantDataPath, "expression.table")
 
     def convertCharacterization(self, record):
         readCharacterization = protocol.Characterization
@@ -41,12 +47,13 @@ class RNASeqResult(object):
     def getCharacterization(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
-        analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
+        analysisId, complexity, exonicFraction, fractionMapped,
+        intergenicFraction, intronicFraction
         """
         characterizationData = open(self._characterizationFile, "r")
         quantCharacterization = characterizationData.readline()
         fields = quantCharacterization.split('/t')
-        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.convertCharacterization(fields)
 
     def convertReadCounts(self, record):
@@ -63,12 +70,13 @@ class RNASeqResult(object):
     def getReadCounts(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
-        analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
+        analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount,
+        uniqueSpliceCount
         """
         readCountData = open(self._readCountFile, "r")
         countData = readCountData.readline()
         fields = countData.split('/t')
-        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.convertReadCounts(fields)
 
     def convertRnaQuantification(self, record):
@@ -111,8 +119,9 @@ class RNASeqResult(object):
         input is tab file with no header.  Columns are:
         id, annotationId, expression, featureGroupId,
         isNormalized, rawReadCount, score, units
-        
-        expressionLevelId is not None: return only the specific expressionLevel object
+
+        expressionLevelId is not None: return only the specific expressionLevel
+        object
         featureGroupId is not None: return all in that group
         """
         expressionLevelData = open(self._expressionLevelFile, "r")
@@ -120,10 +129,12 @@ class RNASeqResult(object):
             fields = expressionData.strip().split('\t')
             if featureGroupId is not None:
                 if fields[3] == featureGroupId:
-                    if expressionLevelId is None or fields[0] == expressionLevelId:
+                    if (expressionLevelId is None or fields[0] ==
+                            expressionLevelId):
                         yield self.convertExpressionLevel(fields)
             elif expressionLevelId is None or fields[0] == expressionLevelId:
                 yield self.convertExpressionLevel(fields)
+
 
 class SimulatedRNASeqResult(object):
     """
@@ -144,12 +155,13 @@ class SimulatedRNASeqResult(object):
     def getCharacterization(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
-        analysisId, complexity, exonicFraction, fractionMapped, intergenicFraction, intronicFraction
+        analysisId, complexity, exonicFraction, fractionMapped,
+        intergenicFraction, intronicFraction
         """
         characterizationData = open(self._characterizationFile, "r")
         quantCharacterization = characterizationData.readline()
         fields = quantCharacterization.split('/t')
-        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.generateCharacterization()
 
     def generateReadCounts(self):
@@ -163,12 +175,13 @@ class SimulatedRNASeqResult(object):
     def getReadCounts(self, rnaQuantificationId):
         """
         input is tab file with no header.  Columns are:
-        analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount, uniqueSpliceCount
+        analysisId, multiCount, multiSpliceCount, totalReadCount, uniqueCount,
+        uniqueSpliceCount
         """
         readCountData = open(self._readCountFile, "r")
         countData = readCountData.readline()
         fields = countData.split('/t')
-        if rnaQuantificationID is None or fields[0] == rnaQuantificationId:
+        if rnaQuantificationId is None or fields[0] == rnaQuantificationId:
             yield self.generateReadCounts()
 
     def generateRnaQuantification(self):
@@ -205,7 +218,8 @@ class SimulatedRNASeqResult(object):
         annotationId, expression, featureGroupId, id,
         isNormalized, rawReadCount, score, units
 
-        expressionLevelId is not None: return only the specific expressionLevel object
+        expressionLevelId is not None: return only the specific expressionLevel
+        object
         featureGroupId is not None: return all in that group
         """
         expressionLevelData = open(self._expressionLevelFile, "r")
@@ -213,7 +227,8 @@ class SimulatedRNASeqResult(object):
             fields = expressionData.strip().split('\t')
             if featureGroupId is not None:
                 if fields[3] == featureGroupId:
-                    if expressionLevelId is None or fields[0] == expressionLevelId:
+                    if (expressionLevelId is None or
+                            fields[0] == expressionLevelId):
                         yield self.generateExpressionLevel(fields)
             elif expressionLevelId is None or fields[0] == expressionLevelId:
                 yield self.generateExpressionLevel(fields)
