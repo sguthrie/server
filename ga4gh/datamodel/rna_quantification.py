@@ -135,6 +135,22 @@ class RNASeqResult(object):
             elif expressionLevelId is None or fields[0] == expressionLevelId:
                 yield self.convertExpressionLevel(fields)
 
+    def toProtocolElement(self):
+        """
+        Converts this rnaQuant into its GA4GH protocol equivalent.
+        """
+        rnaQuantIterator = self.getRnaQuantification(
+            self._rnaQuantificationId)
+        rnaQuantData = next(rnaQuantIterator, None)
+
+        protocolElement = protocol.RnaQuantification()
+        protocolElement.annotationIds = rnaQuantData.annotationIds
+        protocolElement.description = rnaQuantData.description
+        protocolElement.id = rnaQuantData.id
+        protocolElement.name = rnaQuantData.name
+        protocolElement.readGroupId = rnaQuantData.readGroupId
+
+        return protocolElement
 
 class SimulatedRNASeqResult(object):
     """

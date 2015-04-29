@@ -416,31 +416,19 @@ class AbstractBackend(object):
         Returns a generator over the (rnaQuantification, nextPageToken) pairs
         defined by the specified request.
         """
-        rnaQuantificationId = request.rnaQuantificationId
-        try:
-            rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
-        except KeyError:
-            raise exceptions.RnaQuantificationNotFoundException(
-                rnaQuantificationId)
-        currentIndex = 0
-        if request.pageToken is not None:
-            currentIndex, = _parsePageToken(request.pageToken, 1)
-        rnaQuantIterator = rnaQuant.getRnaQuantification(rnaQuantificationId)
-        rnaQuantData = next(rnaQuantIterator, None)
-        while rnaQuantData is not None:
-            nextRnaQuantData = next(rnaQuantIterator, None)
-            nextPageToken = None
-            if nextRnaQuantData is not None:
-                currentIndex += 1
-                nextPageToken = "{}".format(currentIndex)
-            rnaQuantification = protocol.RnaQuantification()
-            rnaQuantification.annotationIds = rnaQuantData.annotationIds
-            rnaQuantification.description = rnaQuantData.description
-            rnaQuantification.id = rnaQuantData.id
-            rnaQuantification.name = rnaQuantData.name
-            rnaQuantification.readGroupId = rnaQuantData.readGroupId
-            yield rnaQuantification, nextPageToken
-            rnaQuantData = nextRnaQuantData
+        if request.rnaQuantificationId is not None:
+            rnaQuantificationId = request.rnaQuantificationId
+            try:
+                rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
+                rnaQuantIds = [rnaQuantificationId]
+            except KeyError:
+                raise exceptions.RnaQuantificationNotFoundException(
+                    rnaQuantificationId)
+        else:
+            rnaQuantIds = self._rnaQuantificationIds
+
+        return self._topLevelObjectGenerator(
+            request, self._rnaQuantificationIdMap, rnaQuantIds)
 
     def expressionLevelGenerator(self, request):
         expressionLevelId = request.expressionLevelId
