@@ -345,8 +345,9 @@ Read characterization data.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['analysisId', 'complexity', 'exonicFraction', 'fractionMapped',
-                 'intergenicFraction', 'intronicFraction']
+    __slots__ = [
+        'analysisId', 'complexity', 'exonicFraction', 'fractionMapped',
+        'intergenicFraction', 'intronicFraction']
 
     def __init__(self):
         self.analysisId = None
@@ -3177,8 +3178,9 @@ as JSON.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['expressionLevelId', 'featureGroupId', 'pageSize', 'pageToken',
-                 'rnaQuantificationId']
+    __slots__ = [
+        'expressionLevelId', 'featureGroupId', 'pageSize', 'pageToken',
+        'rnaQuantificationId']
 
     def __init__(self):
         self.expressionLevelId = None
@@ -3347,7 +3349,7 @@ postMethods = \
      ('/variantsets/search',
       SearchVariantSetsRequest,
       SearchVariantSetsResponse),
-      ('/expressionlevel/search',
+     ('/expressionlevel/search',
       SearchExpressionLevelRequest,
       SearchExpressionLevelResponse),
      ('/rnaquantification/search',

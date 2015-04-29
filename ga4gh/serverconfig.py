@@ -17,7 +17,7 @@ class BaseConfig(object):
     MAX_RESPONSE_LENGTH = 1024 * 1024  # 1MB
     REQUEST_VALIDATION = False
     RESPONSE_VALIDATION = False
-    DEFAULT_PAGE_SIZE = 100
+    DEFAULT_PAGE_SIZE = 2
     DATA_SOURCE = "__EMPTY__"
 
     # Options for the simulated backend.

@@ -130,19 +130,20 @@ class RequestFactory(object):
 
     def createSearchRnaQuantificationRequest(self):
         request = protocol.SearchRnaQuantificationRequest()
-        #allow only a single ID for now
-        #setCommaSeparatedAttribute(request, self.args, 'rnaQuantificationId')
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'rnaQuantificationId')
         request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
 
     def createSearchExpressionLevelRequest(self):
         request = protocol.SearchExpressionLevelRequest()
-        #allow only a single ID for now
-        #setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
         request.expressionLevelId = self.args.expressionLevelId
         request.featureGroupId = self.args.featureGroupId
         request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
+
 
 def getWorkarounds(args):
     if args.workarounds is None:

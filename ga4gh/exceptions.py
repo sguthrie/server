@@ -170,8 +170,9 @@ class ReadGroupNotFoundException(ObjectNotFoundException):
 
 class RnaQuantificationNotFoundException(NotFoundException):
     def __init__(self, rnaQuantificationId):
-        self.message = "The requested RnaQuantification '{}' was not found".format(
-            rnaQuantificationId)
+        self.message = (
+            "The requested RnaQuantification '{}' was not found".format(
+                rnaQuantificationId))
 
 
 class UnsupportedMediaTypeException(RuntimeException):
