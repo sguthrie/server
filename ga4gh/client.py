@@ -268,4 +268,3 @@ class HttpClient(object):
         return self.runSearchRequest(
             protocolRequest, "expressionlevel",
             protocol.SearchExpressionLevelResponse)
-
