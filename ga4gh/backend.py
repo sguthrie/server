@@ -422,7 +422,6 @@ class AbstractBackend(object):
         except KeyError:
             raise exceptions.RnaQuantificationNotFoundException(
                 rnaQuantificationId)
-
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = _parsePageToken(request.pageToken, 1)
@@ -624,4 +623,3 @@ class FileSystemBackend(AbstractBackend):
                 self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
         self._rnaQuantificationIds = sorted(
             self._rnaQuantificationIdMap.keys())
-

@@ -10,10 +10,11 @@ import os
 
 import ga4gh.protocol as protocol
 
+
 """
 TODO: Would be nice to just use the csv module to read inputs and have headers
 in files for clarity and to eliminate the whole record[N] absurdity.
-      
+
 Additionally, characterization and read counts doesn't have an access point.
 """
 
@@ -128,7 +129,7 @@ class RNASeqResult(object):
             fields = expressionData.strip().split('\t')
             if featureGroupId is not None:
                 if fields[3] == featureGroupId:
-                    if (expressionLevelId is None or fields[0] == 
+                    if (expressionLevelId is None or fields[0] ==
                             expressionLevelId):
                         yield self.convertExpressionLevel(fields)
             elif expressionLevelId is None or fields[0] == expressionLevelId:
@@ -226,8 +227,8 @@ class SimulatedRNASeqResult(object):
             fields = expressionData.strip().split('\t')
             if featureGroupId is not None:
                 if fields[3] == featureGroupId:
-                    if (expressionLevelId is None or fields[0] == 
-                            expressionLevelId):
+                    if (expressionLevelId is None or
+                            fields[0] == expressionLevelId):
                         yield self.generateExpressionLevel(fields)
             elif expressionLevelId is None or fields[0] == expressionLevelId:
                 yield self.generateExpressionLevel(fields)
