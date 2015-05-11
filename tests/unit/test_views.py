@@ -149,7 +149,13 @@ class TestFrontend(unittest.TestCase):
             self.verifySearchRouting(path)
 
     def testRouteIndex(self):
-        response = self.app.get("/")
+        self._routeIndex("/")
+
+    def testRouteIndexRedirect(self):
+        self._routeIndex("/{}".format(protocol.version))
+
+    def _routeIndex(self, path):
+        response = self.app.get(path)
         self.assertEqual(200, response.status_code)
         self.assertEqual("text/html", response.mimetype)
         self.assertGreater(len(response.data), 0)
@@ -191,3 +197,8 @@ class TestFrontend(unittest.TestCase):
     def testWrongVersion(self):
         path = '/v0.1.2/variantsets/search'
         self.assertEqual(404, self.app.options(path).status_code)
+
+    def testCurrentVersion(self):
+        path = '/{}/variantsets/search'.format(
+            frontend.Version.currentString)
+        self.assertEqual(200, self.app.options(path).status_code)
