@@ -3322,8 +3322,9 @@ as JSON.
 {"namespace": "org.ga4gh", "type": "record", "name":
 "SearchFeatureGroupRequest", "fields": [{"default": null,
 "doc": "", "type": ["null", "string"], "name": "featureGroupId"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
+{"default": null, "doc": "", "type": ["null", "float"], "name":
+"threshold"}, {"default": null, "doc": "", "type": ["null", "int"],
+"name": "pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
@@ -3339,10 +3340,11 @@ as JSON.
         embeddedTypes = {}
         return embeddedTypes[fieldName]
 
-    __slots__ = ['featureGroupId', 'pageSize', 'pageToken']
+    __slots__ = ['featureGroupId', 'threshold','pageSize', 'pageToken']
 
     def __init__(self):
         self.featureGroupId = None
+        threshold = None
         self.pageSize = None
         self.pageToken = None
 

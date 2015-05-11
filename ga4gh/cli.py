@@ -150,6 +150,7 @@ class RequestFactory(object):
         # allow only a single ID for now
         # setCommaSeparatedAttribute(request, self.args, 'featureGroupId')
         request.featureGroupId = self.args.featureGroupId
+        request.threshold = self.args.threshold
         return request
 
 
@@ -904,6 +905,9 @@ def addFeatureGroupSearchParserArguments(subparsers):
     parser.add_argument(
         "--featureGroupId", default=None,
         help="The feature group Id to search over")
+    parser.add_argument(
+        "--threshold", default=None, type=float,
+        help="The minimum value for expression results to report.")
 
 
 def addReferenceSetsGetParser(subparsers):
