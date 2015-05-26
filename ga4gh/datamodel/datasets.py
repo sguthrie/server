@@ -11,6 +11,7 @@ import random
 import ga4gh.datamodel as datamodel
 import ga4gh.datamodel.variants as variants
 import ga4gh.datamodel.reads as reads
+import ga4gh.datamodel.rna_quantification as rna_quantification
 
 
 class AbstractDataset(datamodel.DatamodelObject):
@@ -93,6 +94,12 @@ class AbstractDataset(datamodel.DatamodelObject):
         """
         return self._rnaQuantificationIdMap
 
+    def getRnaQuantifications(self):
+        """
+        Returns the list of RnaQuantifications in this dataset
+        """
+        return self._rnaQuantificationIdMap.values()
+
 
 class SimulatedDataset(AbstractDataset):
     """
@@ -156,7 +163,7 @@ class FileSystemDataset(AbstractDataset):
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
 
         # Rna Quantification
-        rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
+        rnaQuantDir = os.path.join(self._datasetDir, "rnaQuant")
         for rnaQuantId in os.listdir(rnaQuantDir):
             relativePath = os.path.join(rnaQuantDir, rnaQuantId)
             if os.path.isdir(relativePath):

@@ -503,19 +503,18 @@ class AbstractBackend(object):
         Returns a generator over the (rnaQuantification, nextPageToken) pairs
         defined by the specified request.
         """
-        if request.rnaQuantificationId is not None:
-            rnaQuantificationId = request.rnaQuantificationId
-            try:
-                rnaQuant = self._rnaQuantificationIdMap[rnaQuantificationId]
+        rnaQuantificationId = request.rnaQuantificationId
+        if rnaQuantificationId is not None:
+            if rnaQuantificationId in self.getDataset().getRnaQuantificationIds():
                 rnaQuantIds = [rnaQuantificationId]
-            except KeyError:
+            else:
                 raise exceptions.RnaQuantificationNotFoundException(
                     rnaQuantificationId)
         else:
-            rnaQuantIds = self._rnaQuantificationIds
+            rnaQuantIds = self.getDataset().getRnaQuantificationIds()
 
         return self._topLevelObjectGenerator(
-            request, self._rnaQuantificationIdMap, rnaQuantIds)
+            request, self.getDataset().getRnaQuantificationIdMap(), rnaQuantIds)
 
     def expressionLevelGenerator(self, request):
         expressionLevelId = request.expressionLevelId
@@ -527,9 +526,10 @@ class AbstractBackend(object):
         if rnaQuantificationId is not None:
             rnaQuantificationIds = [rnaQuantificationId]
         else:
-            rnaQuantificationIds = self._rnaQuantificationIds
+            rnaQuantificationIds = self.getDataset().getRnaQuantificationIds()
+        rnaQuantifications = self.getDataset().getRnaQuantificationIdMap()
         for rnaQuantId in rnaQuantificationIds:
-            rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
+            rnaQuant = rnaQuantifications[rnaQuantId]
             expressionLevelIterator = rnaQuant.getExpressionLevel(
                 expressionLevelId, featureGroupId)
             expressionLevelData = next(expressionLevelIterator, None)
@@ -558,8 +558,9 @@ class AbstractBackend(object):
         currentIndex = 0
         if request.pageToken is not None:
             currentIndex, = _parsePageToken(request.pageToken, 1)
-        for rnaQuantId in self._rnaQuantificationIds:
-            rnaQuant = self._rnaQuantificationIdMap[rnaQuantId]
+        rnaQuantifications = self.getDataset().getRnaQuantificationIdMap()
+        for rnaQuantId in self.getDataset().getRnaQuantificationIds():
+            rnaQuant = rnaQuantifications[rnaQuantId]
             featureGroupIterator = rnaQuant.getFeatureGroup(
                 featureGroupId)
             featureGroupData = next(featureGroupIterator, None)
