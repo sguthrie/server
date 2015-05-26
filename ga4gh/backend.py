@@ -8,14 +8,12 @@ from __future__ import unicode_literals
 
 import os
 import json
-import random
 
 import ga4gh.protocol as protocol
 import ga4gh.datamodel.references as references
-import ga4gh.datamodel.reads as reads
 import ga4gh.exceptions as exceptions
-import ga4gh.datamodel.variants as variants
-import ga4gh.datamodel.rna_quantification as rna_quantification
+import ga4gh.datamodel as datamodel
+import ga4gh.datamodel.datasets as datasets
 
 
 def _parsePageToken(pageToken, numValues):
@@ -27,12 +25,14 @@ def _parsePageToken(pageToken, numValues):
     exception.
     """
     tokens = pageToken.split(":")
-    # TODO define exceptions.InvalidPageToken and raise here.
     if len(tokens) != numValues:
-        raise Exception("Invalid number of values in page token")
-    # TODO catch a ValueError here when bad integers are passed and
-    # convert this into the appropriate InvalidPageToken exception.
-    values = map(int, tokens)
+        msg = "Invalid number of values in page token"
+        raise exceptions.BadPageTokenException(msg)
+    try:
+        values = map(int, tokens)
+    except ValueError:
+        msg = "Malformed integers in page token"
+        raise exceptions.BadPageTokenException(msg)
     return values
 
 
@@ -185,32 +185,98 @@ class AbstractBackend(object):
     This class provides methods for all of the GA4GH protocol end points.
     """
     def __init__(self):
-        self._variantSetIdMap = {}
-        self._variantSetIds = []
         self._referenceSetIdMap = {}
         self._referenceSetIds = []
-        self._readGroupSetIdMap = {}
-        self._readGroupSetIds = []
-        self._readGroupIds = []
-        self._readGroupIdMap = {}
-        self._rnaQuantificationIdMap = {}
-        self._rnaQuantificationIds = []
+        self._referenceIdMap = {}
+        self._referenceIds = []
         self._requestValidation = False
         self._responseValidation = False
         self._defaultPageSize = 100
         self._maxResponseLength = 2**20  # 1 MiB
+        self._dataset = datasets.AbstractDataset()
 
-    def getVariantSets(self):
+    def getDataset(self):
         """
-        Returns the list of VariantSets in this backend.
+        Returns the backend's dataset
         """
-        return list(self._variantSetIdMap.values())
+        return self._dataset
 
-    def getReadGroupSets(self):
+    def getReferenceSets(self):
         """
-        Returns the list of ReadGroupSets in this backend.
+        Returns the list of ReferenceSets in this backend
         """
-        return list(self._readGroupSetIdMap.values())
+        return list(self._referenceSetIdMap.values())
+
+    def getReference(self, id_):
+        """
+        Returns a reference with the given id_
+        """
+        return self.runGetRequest(self._referenceIdMap, id_)
+
+    def getReferenceSet(self, id_):
+        """
+        Returns a referenceSet with the given id_
+        """
+        return self.runGetRequest(self._referenceSetIdMap, id_)
+
+    def listReferenceBases(self, id_, requestArgs):
+        # parse arguments
+        try:
+            reference = self._referenceIdMap[id_]
+        except KeyError:
+            raise exceptions.ObjectWithIdNotFoundException(id_)
+        start = 0
+        end = datamodel.PysamDatamodelMixin.fastaMax
+        if 'start' in requestArgs:
+            startString = requestArgs['start']
+            try:
+                start = int(startString)
+            except ValueError:
+                raise exceptions.BadRequestIntegerException(
+                    'start', startString)
+        if 'end' in requestArgs:
+            endString = requestArgs['end']
+            try:
+                end = int(endString)
+            except ValueError:
+                raise exceptions.BadRequestIntegerException(
+                    'end', endString)
+        if 'pageToken' in requestArgs:
+            pageTokenStr = requestArgs['pageToken']
+            start = _parsePageToken(pageTokenStr, 1)[0]
+        chunkSize = self._maxResponseLength
+
+        # get reference bases
+        gbEnd = min(start + chunkSize, end)
+        sequence = reference.getBases(start, gbEnd)
+
+        # determine nextPageToken
+        if len(sequence) == chunkSize:
+            nextPageToken = start + chunkSize
+        elif len(sequence) > chunkSize:
+            raise exceptions.ServerError()  # should never happen
+        else:
+            nextPageToken = None
+
+        # build response
+        response = protocol.ListReferenceBasesResponse()
+        response.offset = start
+        response.sequence = sequence
+        response.nextPageToken = nextPageToken
+        return response.toJsonString()
+
+    def runGetRequest(self, idMap, id_):
+        """
+        Runs a get request by indexing into the provided idMap and
+        returning a json string of that object
+        """
+        try:
+            obj = idMap[id_]
+        except KeyError:
+            raise exceptions.ObjectWithIdNotFoundException(id_)
+        protocolElement = obj.toProtocolElement()
+        jsonString = protocolElement.toJsonString()
+        return jsonString
 
     def runSearchRequest(
             self, requestStr, requestClass, responseClass, objectGenerator):
@@ -372,7 +438,8 @@ class AbstractBackend(object):
         defined by the specified request.
         """
         return self._topLevelObjectGenerator(
-            request, self._readGroupSetIdMap, self._readGroupSetIds)
+            request, self.getDataset().getReadGroupSetIdMap(),
+            self.getDataset().getReadGroupSetIds())
 
     def referenceSetsGenerator(self, request):
         """
@@ -382,13 +449,22 @@ class AbstractBackend(object):
         return self._topLevelObjectGenerator(
             request, self._referenceSetIdMap, self._referenceSetIds)
 
+    def referencesGenerator(self, request):
+        """
+        Returns a generator over the (reference, nextPageToken) pairs
+        defined by the specified request.
+        """
+        return self._topLevelObjectGenerator(
+            request, self._referenceIdMap, self._referenceIds)
+
     def variantSetsGenerator(self, request):
         """
         Returns a generator over the (variantSet, nextPageToken) pairs defined
         by the specified request.
         """
         return self._topLevelObjectGenerator(
-            request, self._variantSetIdMap, self._variantSetIds)
+            request, self.getDataset().getVariantSetIdMap(),
+            self.getDataset().getVariantSetIds())
 
     def readsGenerator(self, request):
         """
@@ -396,7 +472,7 @@ class AbstractBackend(object):
         by the specified request
         """
         intervalIterator = ReadsIntervalIterator(
-            request, self._readGroupIdMap)
+            request, self.getDataset().getReadGroupIdMap())
         return intervalIterator
 
     def variantsGenerator(self, request):
@@ -405,7 +481,7 @@ class AbstractBackend(object):
         by the specified request.
         """
         intervalIterator = VariantsIntervalIterator(
-            request, self._variantSetIdMap)
+            request, self.getDataset().getVariantSetIdMap())
         return intervalIterator
 
     def callSetsGenerator(self, request):
@@ -416,7 +492,8 @@ class AbstractBackend(object):
         if request.name is not None:
             raise exceptions.NotImplementedException(
                 "Searching over names is not supported")
-        variantSet = _getVariantSet(request, self._variantSetIdMap)
+        variantSet = _getVariantSet(
+            request, self.getDataset().getVariantSetIdMap())
         return self._topLevelObjectGenerator(
             request, variantSet.getCallSetIdMap(),
             variantSet.getCallSetIds())
@@ -577,25 +654,18 @@ class SimulatedBackend(AbstractBackend):
     def __init__(self, randomSeed=0, numCalls=1, variantDensity=0.5,
                  numVariantSets=1):
         super(SimulatedBackend, self).__init__()
-        self._randomSeed = randomSeed
-        self._randomGenerator = random.Random()
-        self._randomGenerator.seed(self._randomSeed)
-        for i in range(numVariantSets):
-            variantSetId = "simVs{}".format(i)
-            seed = self._randomGenerator.randint(0, 2**32 - 1)
-            variantSet = variants.SimulatedVariantSet(
-                seed, numCalls, variantDensity, variantSetId)
-            self._variantSetIdMap[variantSetId] = variantSet
-        self._variantSetIds = sorted(self._variantSetIdMap.keys())
+        self._dataset = datasets.SimulatedDataset(
+            randomSeed, numCalls, variantDensity, numVariantSets)
 
-        # Reads
-        readGroupSetId = "aReadGroupSet"
-        readGroupSet = reads.SimulatedReadGroupSet(readGroupSetId)
-        self._readGroupSetIdMap[readGroupSetId] = readGroupSet
-        for readGroup in readGroupSet.getReadGroups():
-            self._readGroupIdMap[readGroup.getId()] = readGroup
-        self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
-        self._readGroupIds = sorted(self._readGroupIdMap.keys())
+        # References
+        referenceSetId = "aReferenceSet"
+        referenceSet = references.SimulatedReferenceSet(referenceSetId)
+        self._referenceSetIdMap[referenceSetId] = referenceSet
+        for reference in referenceSet.getReferences():
+            referenceId = reference.getId()
+            self._referenceIdMap[referenceId] = reference
+        self._referenceSetIds = sorted(self._referenceSetIdMap.keys())
+        self._referenceIds = sorted(self._referenceIdMap.keys())
 
 
 class FileSystemBackend(AbstractBackend):
@@ -607,45 +677,29 @@ class FileSystemBackend(AbstractBackend):
         self._dataDir = dataDir
         # TODO this code is very ugly and should be regarded as a temporary
         # stop-gap until we deal with iterating over the data tree properly.
-        # Variants
-        variantSetDir = os.path.join(self._dataDir, "variants")
-        for variantSetId in os.listdir(variantSetDir):
-            relativePath = os.path.join(variantSetDir, variantSetId)
-            if os.path.isdir(relativePath):
-                self._variantSetIdMap[variantSetId] = \
-                    variants.HtslibVariantSet(variantSetId, relativePath)
-        self._variantSetIds = sorted(self._variantSetIdMap.keys())
 
         # References
-        referenceSetDir = os.path.join(self._dataDir, "references")
+        referencesDirName = "references"
+        referenceSetDir = os.path.join(self._dataDir, referencesDirName)
         for referenceSetId in os.listdir(referenceSetDir):
             relativePath = os.path.join(referenceSetDir, referenceSetId)
             if os.path.isdir(relativePath):
-                referenceSet = references.ReferenceSet(
+                referenceSet = references.HtslibReferenceSet(
                     referenceSetId, relativePath)
                 self._referenceSetIdMap[referenceSetId] = referenceSet
+                for reference in referenceSet.getReferences():
+                    referenceId = reference.getId()
+                    self._referenceIdMap[referenceId] = reference
         self._referenceSetIds = sorted(self._referenceSetIdMap.keys())
+        self._referenceIds = sorted(self._referenceIdMap.keys())
 
-        # Reads
-        readGroupSetDir = os.path.join(self._dataDir, "reads")
-        for readGroupSetId in os.listdir(readGroupSetDir):
-            relativePath = os.path.join(readGroupSetDir, readGroupSetId)
-            if os.path.isdir(relativePath):
-                readGroupSet = reads.HtslibReadGroupSet(
-                    readGroupSetId, relativePath)
-                self._readGroupSetIdMap[readGroupSetId] = readGroupSet
-                for readGroup in readGroupSet.getReadGroups():
-                    self._readGroupIdMap[readGroup.getId()] = readGroup
-        self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
-        self._readGroupIds = sorted(self._readGroupIdMap.keys())
-
-        # Rna Quantification
-        rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
-        for rnaQuantId in os.listdir(rnaQuantDir):
-            relativePath = os.path.join(rnaQuantDir, rnaQuantId)
-            if os.path.isdir(relativePath):
-                rnaQuantification = rna_quantification.RNASeqResult(
-                    rnaQuantId, relativePath)
-                self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
-        self._rnaQuantificationIds = sorted(
-            self._rnaQuantificationIdMap.keys())
+        # Datasets
+        datasetDirs = [
+            os.path.join(self._dataDir, directory)
+            for directory in os.listdir(self._dataDir)
+            if os.path.isdir(os.path.join(self._dataDir, directory)) and
+            directory != referencesDirName]
+        if len(datasetDirs) != 1:
+            raise exceptions.NotExactlyOneDatasetException(datasetDirs)
+        datasetDir = datasetDirs[0]
+        self._dataset = datasets.FileSystemDataset(datasetDir)

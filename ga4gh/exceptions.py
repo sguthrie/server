@@ -106,6 +106,13 @@ class BadRequestException(RuntimeException):
     message = "Bad request"
 
 
+class BadRequestIntegerException(BadRequestException):
+    def __init__(self, attrName, intString):
+        self.message = \
+            "{} argument '{}' could not be parsed as an integer".format(
+                attrName, intString)
+
+
 class BadPageSizeException(BadRequestException):
     def __init__(self, pageSize):
         self.message = "Request page size '{}' is invalid".format(pageSize)
@@ -128,9 +135,9 @@ class RequestValidationFailureException(BadRequestException):
         messageString = (
             "Request '{}' is not a valid instance of {}; "
             "invalid fields: {}")
-        schemaTool = avrotools.SchemaTool(requestClass)
+        validator = avrotools.Validator(requestClass)
         self.message = messageString.format(
-            jsonDict, requestClass, schemaTool.getInvalidFields(jsonDict))
+            jsonDict, requestClass, validator.getInvalidFields(jsonDict))
 
 
 class BadReadsSearchRequestBothRefs(BadRequestException):
@@ -179,6 +186,12 @@ class RnaQuantificationNotFoundException(NotFoundException):
                 rnaQuantificationId))
 
 
+class ObjectWithIdNotFoundException(ObjectNotFoundException):
+    def __init__(self, objectId):
+        self.message = "No object of this type exists with id '{}'".format(
+            objectId)
+
+
 class UnsupportedMediaTypeException(RuntimeException):
     httpStatus = 415
     message = "Unsupported media type"
@@ -217,6 +230,12 @@ class DataException(BaseServerException):
     Exceptions thrown during the server startup, and processing faulty VCFs
     """
     message = "Faulty data found or data file is missing."
+
+
+class NotExactlyOneDatasetException(DataException):
+    def __init__(self, datasetDirs):
+        msg = "Not exactly one dataset found: {}".format(datasetDirs)
+        super(NotExactlyOneDatasetException, self).__init__(msg)
 
 
 class FileOpenFailedException(DataException):
@@ -301,6 +320,16 @@ class InconsistentCallSetIdException(MalformedException):
             " directory.".format(fileName))
 
 
+class NotExactlyOneReferenceException(MalformedException):
+    """
+    A FASTA file has a reference count not equal to one
+    """
+    def __init__(self, id_, numReferences):
+        self.message = (
+            "FASTA files must have one and only one reference.  "
+            "File {} has {} references.".format(id_, numReferences))
+
+
 ###############################################################
 #
 # Internal errors. These are exceptions that we regard as bugs.
@@ -321,9 +350,9 @@ class ResponseValidationFailureException(ServerError):
     A validation of the response data failed
     """
     def __init__(self, jsonDict, requestClass):
-        schemaTool = avrotools.SchemaTool(requestClass)
+        validator = avrotools.Validator(requestClass)
         self.message = (
             "Response '{}' is not a valid instance of {}. "
             "Invalid fields: {} "
             "Please file a bug report.".format(
-                jsonDict, requestClass, schemaTool.getInvalidFields(jsonDict)))
+                jsonDict, requestClass, validator.getInvalidFields(jsonDict)))
