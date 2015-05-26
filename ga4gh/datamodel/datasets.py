@@ -24,6 +24,8 @@ class AbstractDataset(datamodel.DatamodelObject):
         self._readGroupSetIdMap = {}
         self._readGroupIds = []
         self._readGroupIdMap = {}
+        self._rnaQuantificationIds = []
+        self._rnaQuantificationIdMap = {}
 
     def getDirectory(self):
         """
@@ -78,6 +80,18 @@ class AbstractDataset(datamodel.DatamodelObject):
         Returns the list of ReadGroupSets in this dataset
         """
         return self._readGroupSetIdMap.values()
+
+    def getRnaQuantificationIds(self):
+        """
+        Return a list of ids of rna quants that this dataset has
+        """
+        return self._rnaQuantificationIds
+
+    def getRnaQuantificationIdMap(self):
+        """
+        Return a map of the dataset's rna quant ids to rna quants
+        """
+        return self._rnaQuantificationIdMap
 
 
 class SimulatedDataset(AbstractDataset):
@@ -140,3 +154,14 @@ class FileSystemDataset(AbstractDataset):
                     self._readGroupIdMap[readGroup.getId()] = readGroup
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
+
+        # Rna Quantification
+        rnaQuantDir = os.path.join(self._dataDir, "rnaQuant")
+        for rnaQuantId in os.listdir(rnaQuantDir):
+            relativePath = os.path.join(rnaQuantDir, rnaQuantId)
+            if os.path.isdir(relativePath):
+                rnaQuantification = rna_quantification.RNASeqResult(
+                    rnaQuantId, relativePath)
+                self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
+        self._rnaQuantificationIds = sorted(
+            self._rnaQuantificationIdMap.keys())
