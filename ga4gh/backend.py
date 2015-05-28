@@ -391,6 +391,36 @@ class AbstractBackend(object):
         # TODO
         raise exceptions.NotImplementedException("Implement me!")
 
+    def searchRnaQuantification(self, request):
+        """
+        Returns a SearchRnaQuantificationResponse for the specified
+        SearchRnaQuantificationRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchRnaQuantificationRequest,
+            protocol.SearchRnaQuantificationResponse,
+            self.rnaQuantificationGenerator)
+
+    def searchExpressionLevel(self, request):
+        """
+        Returns a SearchExpressionLevelResponse for the specified
+        SearchExpressionLevelRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchExpressionLevelRequest,
+            protocol.SearchExpressionLevelResponse,
+            self.expressionLevelGenerator)
+
+    def searchFeatureGroup(self, request):
+        """
+        Returns a SearchFeatureGroupResponse for the specified
+        SearchFeatureGroupRequest object.
+        """
+        return self.runSearchRequest(
+            request, protocol.SearchFeatureGroupRequest,
+            protocol.SearchFeatureGroupResponse,
+            self.featureGroupGenerator)
+
     # Iterators over the data hieararchy
 
     def _topLevelObjectGenerator(self, request, idMap, idList):
@@ -475,6 +505,90 @@ class AbstractBackend(object):
         return self._topLevelObjectGenerator(
             request, variantSet.getCallSetIdMap(),
             variantSet.getCallSetIds())
+
+    def rnaQuantificationGenerator(self, request):
+        """
+        Returns a generator over the (rnaQuantification, nextPageToken) pairs
+        defined by the specified request.
+        """
+        rnaQuantificationId = request.rnaQuantificationId
+        if rnaQuantificationId is not None:
+            if rnaQuantificationId in self.getDataset().getRnaQuantificationIds():
+                rnaQuantIds = [rnaQuantificationId]
+            else:
+                raise exceptions.RnaQuantificationNotFoundException(
+                    rnaQuantificationId)
+        else:
+            rnaQuantIds = self.getDataset().getRnaQuantificationIds()
+
+        return self._topLevelObjectGenerator(
+            request, self.getDataset().getRnaQuantificationIdMap(), rnaQuantIds)
+
+    def expressionLevelGenerator(self, request):
+        expressionLevelId = request.expressionLevelId
+        featureGroupId = request.featureGroupId
+        rnaQuantificationId = request.rnaQuantificationId
+        currentIndex = 0
+        if request.pageToken is not None:
+            currentIndex, = _parsePageToken(request.pageToken, 1)
+        if rnaQuantificationId is not None:
+            rnaQuantificationIds = [rnaQuantificationId]
+        else:
+            rnaQuantificationIds = self.getDataset().getRnaQuantificationIds()
+        rnaQuantifications = self.getDataset().getRnaQuantificationIdMap()
+        for rnaQuantId in rnaQuantificationIds:
+            rnaQuant = rnaQuantifications[rnaQuantId]
+            expressionLevelIterator = rnaQuant.getExpressionLevel(
+                expressionLevelId, featureGroupId)
+            expressionLevelData = next(expressionLevelIterator, None)
+            while (expressionLevelData is not None and
+                    currentIndex < self._defaultPageSize):
+                nextExpressionLevelData = next(expressionLevelIterator, None)
+                nextPageToken = None
+                if nextExpressionLevelData is not None:
+                    currentIndex += 1
+                    nextPageToken = "{}".format(currentIndex)
+                expressionLevel = protocol.ExpressionLevel()
+                expressionLevel.annotationId = expressionLevelData.annotationId
+                expressionLevel.expression = expressionLevelData.expression
+                expressionLevel.featureGroupId = (
+                    expressionLevelData.featureGroupId)
+                expressionLevel.id = expressionLevelData.id
+                expressionLevel.isNormalized = expressionLevelData.isNormalized
+                expressionLevel.rawReadCount = expressionLevelData.rawReadCount
+                expressionLevel.score = expressionLevelData.score
+                expressionLevel.units = expressionLevelData.units
+                yield expressionLevel, nextPageToken
+                expressionLevelData = nextExpressionLevelData
+
+    def featureGroupGenerator(self, request):
+        featureGroupId = request.featureGroupId
+        currentIndex = 0
+        if request.pageToken is not None:
+            currentIndex, = _parsePageToken(request.pageToken, 1)
+        rnaQuantifications = self.getDataset().getRnaQuantificationIdMap()
+        for rnaQuantId in self.getDataset().getRnaQuantificationIds():
+            rnaQuant = rnaQuantifications[rnaQuantId]
+            featureGroupIterator = rnaQuant.getFeatureGroup(
+                featureGroupId)
+            featureGroupData = next(featureGroupIterator, None)
+            while (featureGroupData is not None and
+                    currentIndex < self._defaultPageSize):
+                nextFeatureGroupData = next(featureGroupIterator, None)
+                nextPageToken = None
+                if nextFeatureGroupData is not None:
+                    currentIndex += 1
+                    nextPageToken = "{}".format(currentIndex)
+                featureGroup = protocol.FeatureGroup()
+                featureGroup.analysisId = featureGroupData.analysisId
+                featureGroup.created = featureGroupData.created
+                featureGroup.description = featureGroupData.description
+                featureGroup.id = featureGroupData.id
+                featureGroup.info = featureGroupData.info
+                featureGroup.name = featureGroupData.name
+                featureGroup.updated = featureGroupData.updated
+                yield featureGroup, nextPageToken
+                featureGroupData = nextFeatureGroupData
 
     def startProfile(self):
         """
