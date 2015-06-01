@@ -453,8 +453,8 @@ def main():
     # default and add in an option to be quiet.
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument(
-            '--local_avdl', help="The path to local avdl tarball",
-            default=None)
+        '--local_avdl', help="The path to local avdl tarball",
+        default=None)
     # We don't support Python 3 right now because the Avro API is
     # different between the different versions.
     if sys.version_info >= (3, 0):

@@ -72,10 +72,11 @@ class Feature(object):
                           self.__dotIfNone(self.strand),
                           self.__dotIfNone(self.frame)] +
                          self.__attributeStrs())
+
     @property
     def featureId(self):
         return self.getRequiredAttribute("ID")[0]
-    
+
     def getRequiredAttribute(self, name):
         "get a require attributes list of values, error if not found"
         values = self.attributes.get(name)
@@ -84,6 +85,7 @@ class Feature(object):
                                 self.gff3Set.fileName, self.lineNumber)
         return values
 
+
 class Gff3Set(object):
     "A set of GFF3 sequence annotations"
     def __init__(self, fileName=None):
@@ -91,7 +93,7 @@ class Gff3Set(object):
         self.roots = set()     # root nodes (those with out parents)
         # index of features by id. GFF3 allows disjoint features with
         # the same id, although this is rarely used.
-        self.byFeatureId = collections.defaultdict(list) 
+        self.byFeatureId = collections.defaultdict(list)
 
     def add(self, feature):
         "add a feature record"

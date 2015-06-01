@@ -157,7 +157,6 @@ class RequestFactory(object):
         request.rnaQuantificationId = self.args.rnaQuantificationId
         return request
 
-
     def createSearchFeatureGroupRequest(self):
         request = protocol.SearchFeatureGroupRequest()
         # allow only a single ID for now

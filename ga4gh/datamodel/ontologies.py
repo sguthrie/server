@@ -3,6 +3,12 @@ Support for Ontologies.
 FIXME: this is currently hard-coded for the GENCODE set as a short-term hack
 to support BRCA changeling.
 """
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import ga4gh.protocol as protocol
+
 
 class OntologyTermSet(object):
     """A set of related ontology terms.
@@ -15,26 +21,31 @@ class OntologyTermSet(object):
     def add(self, ontologyTerm):
         "add an ontology term to the object"
         if ontologyTerm.id in self.byId:
-            raise ValueError("OntologyTerm id already exists: " + str(ontologyTerm))
+            raise ValueError(
+                "OntologyTerm id already exists: "
+                + str(ontologyTerm))
         self.byId[ontologyTerm.id] = ontologyTerm
         if ontologyTerm.name is not None:
             if ontologyTerm.name in self.byName:
-            raise ValueError("OntologyTerm idan already exists: " + str(ontologyTerm))
+                raise ValueError(
+                    "OntologyTerm idan already exists: "
+                    + str(ontologyTerm))
 
     def create(self, id, name):
         "create a new ontology term"
         self.add(OntologyTerm(self.ontologySource, id, name))
 
-        
+
 class OntologyTerm(object):
     """A specific ontology term."""
     def __init__(self, ontologySource, id, name):
         self.__ontologySource = ontologySource
         self.__id = id
         self.__name = name
-        
+
     def __str__(self):
         return self.ontologySource + "/" + self.id + "/" + str(self.name)
+
     def toProtocolElement(self):
         """
         Returns the representation of this OntologyTerm as the corresponding
@@ -46,11 +57,12 @@ class OntologyTerm(object):
         gaOntologyTerm.name = self.__name
         return gaOntologyTerm
 
+
 class SequenceOntologyTermSet(OntologyTermSet):
     """TODO: tmp hack to encode the sequence ontology terms used by the BRCA
     gene sets"""
     def __init__(self):
-        OntologyTermSet.__init__(self, "http://www.sequenceontology.org/"):
+        OntologyTermSet.__init__(self, "http://www.sequenceontology.org/")
         self.create("SO:0000316", "CDS")
         self.create("SO:0000147", "exon")
         self.create("SO:0000704", "gene")
@@ -61,9 +73,10 @@ class SequenceOntologyTermSet(OntologyTermSet):
         self.create("SO:0000203", "UTR")
 
     __singleton = None
+
     @staticmethod
     def singleton():
         "obtain singleton instances of this class"
         if SequenceOntologyTermSet.__singleton is None:
-            SequenceOntologyTermSet.__singleton  = SequenceOntologyTermSet()
+            SequenceOntologyTermSet.__singleton = SequenceOntologyTermSet()
         return SequenceOntologyTermSet.__singleton

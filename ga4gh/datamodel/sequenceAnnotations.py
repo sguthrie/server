@@ -1,6 +1,6 @@
 """
-Module responsible for translating sequence annotation data into GA4GH native
-objects.
+Module responsible for translating sequence annotation data
+into GA4GH native objects.
 """
 from __future__ import division
 from __future__ import print_function
@@ -8,13 +8,21 @@ from __future__ import unicode_literals
 
 import copy
 
+import ga4gh.protocol as protocol
+
+
 class Attributes(dict):
-    """Type defining a collection of attributes associated with various protocol
-    records."""
+    """
+    Type defining a collection of attributes
+    associated with various protocol records.
+    """
     def add(self, name, value):
-        """added a value or list or tuple of values for the specific attribute"""
+        """
+        added a value or list or tuple of values
+        for the specific attribute
+        """
         attrValues = self.get(name)
-        if attrValues == None:
+        if attrValues is None:
             self[name] = attrValues = []
         if isinstance(value, list) or isinstance(value, tuple):
             attrValues.extend(value)
@@ -32,9 +40,12 @@ class Attributes(dict):
             gaAttributes[name] = self[name]
         return gaAttributes
 
+
 class Feature(object):
     "Class representing a Feature annotations"
-    def __init__(self, id, parentIds, featureSetId, referenceName, start, end, featureType, attributes):
+    def __init__(
+            self, id, parentIds, featureSetId,
+            referenceName, start, end, featureType, attributes):
         self.__id = id
         self.__parentIds = parentIds
         self.__featureSetId = featureSetId
@@ -42,7 +53,7 @@ class Feature(object):
         self.__start = start
         self.__end = end
         self.__featureType = featureType
-        self.__attributes = attributes # TODO: deepcopy?
+        self.__attributes = attributes  # TODO: deepcopy?
 
     def toProtocolElement(self):
         """
@@ -60,9 +71,12 @@ class Feature(object):
         gaFeature.attributes = self.__attributes.toProtocolElement()
         return gaFeature
 
+
 class FeatureSet(object):
     "A set of sequence features annotations"
-    def __init__(self, id, datasetId, referenceSetId, name, sourceUri, attributes):
+    def __init__(
+            self, id, datasetId, referenceSetId,
+            name, sourceUri, attributes):
         self.__id = id
         self.__datasetId = datasetId
         self.__referenceSetId = referenceSetId
@@ -77,9 +91,9 @@ class FeatureSet(object):
         """
         gaFeatureSet = protocol.FeatureSet()
         gaFeatureSet.id = self.__id
-        gaFeatureSet.datasetId = self..__datasetId
-        gaFeatureSet.referenceSetId = self..__referenceSetId
-        gaFeatureSet.name = self..__name
-        gaFeatureSet.sourceUri = self..__sourceUri
-        gaFeatureSet.attributes = self..__attributes.toProtocolElement()
+        gaFeatureSet.datasetId = self.__datasetId
+        gaFeatureSet.referenceSetId = self.__referenceSetId
+        gaFeatureSet.name = self.__name
+        gaFeatureSet.sourceUri = self.__sourceUri
+        gaFeatureSet.attributes = self.__attributes.toProtocolElement()
         return gaFeatureSet

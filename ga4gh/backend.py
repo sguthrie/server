@@ -513,7 +513,8 @@ class AbstractBackend(object):
         """
         rnaQuantificationId = request.rnaQuantificationId
         if rnaQuantificationId is not None:
-            if rnaQuantificationId in self.getDataset().getRnaQuantificationIds():
+            if (rnaQuantificationId in
+                    self.getDataset().getRnaQuantificationIds()):
                 rnaQuantIds = [rnaQuantificationId]
             else:
                 raise exceptions.RnaQuantificationNotFoundException(
@@ -522,7 +523,8 @@ class AbstractBackend(object):
             rnaQuantIds = self.getDataset().getRnaQuantificationIds()
 
         return self._topLevelObjectGenerator(
-            request, self.getDataset().getRnaQuantificationIdMap(), rnaQuantIds)
+            request,
+            self.getDataset().getRnaQuantificationIdMap(), rnaQuantIds)
 
     def expressionLevelGenerator(self, request):
         expressionLevelId = request.expressionLevelId

@@ -135,7 +135,8 @@ class RNASeqResult(object):
             elif expressionLevelId is None or fields[0] == expressionLevelId:
                 yield self.convertExpressionLevel(fields)
 
-#TODO: this is just a first pass stub to get working - need to formalize input data
+# TODO: this is just a first pass stub to get working
+# - need to formalize input data
     def convertFeatureGroup(self, record):
         featureGroup = protocol.FeatureGroup()
         featureGroup.id = record[3]
