@@ -11,7 +11,7 @@ from protocol import SearchResponse
 
 import avro.schema
 
-version = '.6.1'
+version = '0.6.32eedec4'
 
 
 class Allele(ProtocolElement):
@@ -149,16 +149,17 @@ class Analysis(ProtocolElement):
 {"default": null, "doc": "", "type": ["null", "string"], "name":
 "name"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "description"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "created"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "updated"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "type"}, {"default": [], "doc":
-"", "type": {"items": "string", "type": "array"}, "name": "software"},
+"string"], "name": "recordCreateTime"}, {"doc": "", "type": "string",
+"name": "recordUpdateTime"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "type"}, {"default": [], "doc": "",
+"type": {"items": "string", "type": "array"}, "name": "software"},
 {"default": {}, "doc": "", "type": {"values": {"items": "string",
 "type": "array"}, "type": "map"}, "name": "info"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "id",
+        "recordUpdateTime",
     ])
 
     @classmethod
@@ -173,19 +174,19 @@ class Analysis(ProtocolElement):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'created', 'description', 'id', 'info', 'name', 'software',
-        'type', 'updated'
+        'description', 'id', 'info', 'name', 'recordCreateTime',
+        'recordUpdateTime', 'software', 'type'
     ]
 
     def __init__(self):
-        self.created = None
         self.description = None
         self.id = None
         self.info = {}
         self.name = None
+        self.recordCreateTime = None
+        self.recordUpdateTime = None
         self.software = []
         self.type = None
-        self.updated = None
 
 
 class Attributes(ProtocolElement):
@@ -248,16 +249,14 @@ null, "doc": "", "type": ["null", "string"], "name": "description"},
 {"default": null, "doc": "", "type": ["null", {"doc": "", "type":
 "record", "name": "DataSizeResource", "fields": [{"doc": "", "type":
 "int", "name": "variants"}, {"doc": "", "type": "int", "name":
-"samples"}]}], "name": "size"}, {"doc": "", "type": "boolean", "name":
-"multiple"}, {"default": [], "doc": "", "type": {"items": "string",
-"type": "array"}, "name": "datasets"}, {"default": [], "doc": "",
-"type": {"items": {"doc": "", "type": "record", "name":
-"DataUseResource", "fields": [{"doc": "", "type": "string", "name":
-"category"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "description"}, {"default": [], "doc": "", "type": {"items":
-{"doc": "", "type": "record", "name": "DataUseRequirementResource",
-"fields": [{"doc": "", "type": "string", "name": "name"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "description"}]},
+"samples"}]}], "name": "size"}, {"default": [], "doc": "", "type":
+{"items": {"doc": "", "type": "record", "name": "DataUseResource",
+"fields": [{"doc": "", "type": "string", "name": "category"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"description"}, {"default": [], "doc": "", "type": {"items": {"doc":
+"", "type": "record", "name": "DataUseRequirementResource", "fields":
+[{"doc": "", "type": "string", "name": "name"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "description"}]},
 "type": "array"}, "name": "requirements"}]}, "type": "array"}, "name":
 "data_use"}]}, "type": "array"}, "name": "datasets"}, {"doc": "",
 "type": "string", "name": "api"}, {"default": null, "doc": "", "type":
@@ -472,6 +471,54 @@ null, "doc": "", "type": ["null", "string"], "name": "name"}, {"doc":
         self.variantSetIds = []
 
 
+class Characterization(ProtocolElement):
+    """
+    Read characterization data.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"Characterization", "fields": [{"doc": "", "type": "string", "name":
+"analysisId"}, {"doc": "", "type": "float", "name": "complexity"},
+{"doc": "", "type": "float", "name": "fractionMapped"}, {"doc": "",
+"type": "float", "name": "intronicFraction"}, {"doc": "", "type":
+"float", "name": "exonicFraction"}, {"doc": "", "type": "float",
+"name": "intergenicFraction"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "analysisId",
+        "complexity",
+        "exonicFraction",
+        "fractionMapped",
+        "intergenicFraction",
+        "intronicFraction",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'analysisId', 'complexity', 'exonicFraction',
+        'fractionMapped', 'intergenicFraction', 'intronicFraction'
+    ]
+
+    def __init__(self):
+        self.analysisId = None
+        self.complexity = None
+        self.exonicFraction = None
+        self.fractionMapped = None
+        self.intergenicFraction = None
+        self.intronicFraction = None
+
+
 class CigarOperation(object):
     """
     An enum for the different types of CIGAR alignment operations that
@@ -578,23 +625,20 @@ null, "doc": "", "type": ["null", "string"], "name": "description"},
 {"default": null, "doc": "", "type": ["null", {"doc": "", "type":
 "record", "name": "DataSizeResource", "fields": [{"doc": "", "type":
 "int", "name": "variants"}, {"doc": "", "type": "int", "name":
-"samples"}]}], "name": "size"}, {"doc": "", "type": "boolean", "name":
-"multiple"}, {"default": [], "doc": "", "type": {"items": "string",
-"type": "array"}, "name": "datasets"}, {"default": [], "doc": "",
-"type": {"items": {"doc": "", "type": "record", "name":
-"DataUseResource", "fields": [{"doc": "", "type": "string", "name":
-"category"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "description"}, {"default": [], "doc": "", "type": {"items":
-{"doc": "", "type": "record", "name": "DataUseRequirementResource",
-"fields": [{"doc": "", "type": "string", "name": "name"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "description"}]},
+"samples"}]}], "name": "size"}, {"default": [], "doc": "", "type":
+{"items": {"doc": "", "type": "record", "name": "DataUseResource",
+"fields": [{"doc": "", "type": "string", "name": "category"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"description"}, {"default": [], "doc": "", "type": {"items": {"doc":
+"", "type": "record", "name": "DataUseRequirementResource", "fields":
+[{"doc": "", "type": "string", "name": "name"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "description"}]},
 "type": "array"}, "name": "requirements"}]}, "type": "array"}, "name":
 "data_use"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "id",
-        "multiple",
         "reference",
     ])
 
@@ -616,16 +660,13 @@ null, "doc": "", "type": ["null", "string"], "name": "description"}]},
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'data_use', 'datasets', 'description', 'id', 'multiple',
-        'reference', 'size'
+        'data_use', 'description', 'id', 'reference', 'size'
     ]
 
     def __init__(self):
         self.data_use = []
-        self.datasets = []
         self.description = None
         self.id = None
-        self.multiple = None
         self.reference = None
         self.size = None
 
@@ -823,20 +864,20 @@ class Experiment(ProtocolElement):
 "Experiment", "fields": [{"doc": "", "type": "string", "name": "id"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
 "name"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "description"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "created"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "updated"}, {"default": null, "doc": "",
-"type": ["null", "long"], "name": "runDate"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "molecule"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "strategy"},
+"name": "description"}, {"doc": "", "type": "string", "name":
+"recordCreateTime"}, {"doc": "", "type": "string", "name":
+"recordUpdateTime"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "runTime"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "molecule"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "strategy"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "selection"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"selection"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "library"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "libraryLayout"}, {"doc": "", "type": ["null",
-"string"], "name": "instrumentModel"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "instrumentDataFile"}, {"doc": "",
-"type": ["null", "string"], "name": "sequencingCenter"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "platformUnit"},
+"library"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "libraryLayout"}, {"doc": "", "type": ["null", "string"],
+"name": "instrumentModel"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "instrumentDataFile"}, {"doc": "", "type":
+["null", "string"], "name": "sequencingCenter"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "platformUnit"},
 {"default": {}, "doc": "", "type": {"values": {"items": "string",
 "type": "array"}, "type": "map"}, "name": "info"}], "doc": ""}
 """
@@ -844,6 +885,8 @@ null, "doc": "", "type": ["null", "string"], "name": "platformUnit"},
     requiredFields = set([
         "id",
         "instrumentModel",
+        "recordCreateTime",
+        "recordUpdateTime",
         "sequencingCenter",
     ])
 
@@ -859,14 +902,14 @@ null, "doc": "", "type": ["null", "string"], "name": "platformUnit"},
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'created', 'description', 'id', 'info', 'instrumentDataFile',
+        'description', 'id', 'info', 'instrumentDataFile',
         'instrumentModel', 'library', 'libraryLayout', 'molecule',
-        'name', 'platformUnit', 'runDate', 'selection',
-        'sequencingCenter', 'strategy', 'updated'
+        'name', 'platformUnit', 'recordCreateTime',
+        'recordUpdateTime', 'runTime', 'selection',
+        'sequencingCenter', 'strategy'
     ]
 
     def __init__(self):
-        self.created = None
         self.description = None
         self.id = None
         self.info = {}
@@ -877,11 +920,76 @@ null, "doc": "", "type": ["null", "string"], "name": "platformUnit"},
         self.molecule = None
         self.name = None
         self.platformUnit = None
-        self.runDate = None
+        self.recordCreateTime = None
+        self.recordUpdateTime = None
+        self.runTime = None
         self.selection = None
         self.sequencingCenter = None
         self.strategy = None
-        self.updated = None
+
+
+class ExpressionLevel(ProtocolElement):
+    """
+    The actual FPKM data for each feature.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"ExpressionLevel", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "featureGroupId"},
+{"doc": "", "type": "string", "name": "annotationId"}, {"doc": "",
+"type": "float", "name": "rawReadCount"}, {"default": null, "doc": "",
+"type": ["null", "float"], "name": "expression"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name": "isNormalized"},
+{"default": null, "doc": "", "type": ["null", {"symbols": ["FPKM",
+"RPM"], "doc": "", "type": "enum", "name": "ExpressionUnits"}],
+"name": "units"}, {"default": null, "doc": "", "type": ["null",
+"float"], "name": "score"}, {"default": [], "doc": "", "type":
+{"items": "float", "type": "array"}, "name": "confInterval"}], "doc":
+""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "annotationId",
+        "featureGroupId",
+        "id",
+        "rawReadCount",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'annotationId', 'confInterval', 'expression',
+        'featureGroupId', 'id', 'isNormalized', 'rawReadCount',
+        'score', 'units'
+    ]
+
+    def __init__(self):
+        self.annotationId = None
+        self.confInterval = []
+        self.expression = None
+        self.featureGroupId = None
+        self.id = None
+        self.isNormalized = None
+        self.rawReadCount = None
+        self.score = None
+        self.units = None
+
+
+class ExpressionUnits(object):
+    """
+    Units for expression level
+    """
+    FPKM = "FPKM"
+    RPM = "RPM"
 
 
 class ExternalIdentifier(ProtocolElement):
@@ -1209,6 +1317,54 @@ null, "doc": "", "type": ["null", "string"], "name": "referenceName"},
         self.start = None
 
 
+class FeatureGroup(ProtocolElement):
+    """
+    Identifying information for annotated features.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name": "FeatureGroup",
+"fields": [{"doc": "", "type": "string", "name": "id"}, {"doc": "",
+"type": "string", "name": "analysisId"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "name"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "description"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "created"},
+{"default": null, "doc": "", "type": ["null", "long"], "name":
+"updated"}, {"default": {}, "doc": "", "type": {"values": {"items":
+"string", "type": "array"}, "type": "map"}, "name": "info"}], "doc":
+""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "analysisId",
+        "id",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'analysisId', 'created', 'description', 'id', 'info', 'name',
+        'updated'
+    ]
+
+    def __init__(self):
+        self.analysisId = None
+        self.created = None
+        self.description = None
+        self.id = None
+        self.info = {}
+        self.name = None
+        self.updated = None
+
+
 class FeatureSet(ProtocolElement):
     """
     No documentation
@@ -1338,53 +1494,15 @@ class GAException(ProtocolElement):
         self.message = None
 
 
-class GetSequenceBasesRequest(ProtocolElement):
-    """
-    The query parameters for a request to `GET /sequence/{id}`, for
-    example:  `GET /sequence/c95d4520-8c63-45f1-924d-
-    6a9604a919fb?start=100&end=200`
-    """
-    _schemaSource = """
-{"namespace": "org.ga4gh.methods", "type": "record", "name":
-"GetSequenceBasesRequest", "fields": [{"default": 0, "doc": "",
-"type": "long", "name": "start"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "end"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "pageToken"}], "doc": ""}
-"""
-    schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
-
-    @classmethod
-    def isEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-        return fieldName in embeddedTypes
-
-    @classmethod
-    def getEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-
-        return embeddedTypes[fieldName]
-
-    __slots__ = [
-        'end', 'pageToken', 'start'
-    ]
-
-    def __init__(self):
-        self.end = None
-        self.pageToken = None
-        self.start = 0
-
-
 class GetSequenceBasesResponse(ProtocolElement):
     """
-    The response from `GET /sequence/{id}` expressed as JSON.
+    The response from `GET /sequences/{id}/bases` expressed as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
 "GetSequenceBasesResponse", "fields": [{"default": 0, "doc": "",
 "type": "long", "name": "offset"}, {"doc": "", "type": "string",
-"name": "sequence"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "nextPageToken"}], "doc": ""}
+"name": "sequence"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
@@ -1403,11 +1521,10 @@ class GetSequenceBasesResponse(ProtocolElement):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'nextPageToken', 'offset', 'sequence'
+        'offset', 'sequence'
     ]
 
     def __init__(self):
-        self.nextPageToken = None
         self.offset = 0
         self.sequence = None
 
@@ -1498,31 +1615,32 @@ class Individual(ProtocolElement):
 {"default": [], "doc": "", "type": {"items": "string", "type":
 "array"}, "name": "groupIds"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "name"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "description"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "created"}, {"default":
-null, "doc": "", "type": ["null", "long"], "name": "updated"},
-{"default": null, "doc": "", "type": ["null", {"doc": "", "type":
-"record", "name": "OntologyTerm", "fields": [{"doc": "", "type":
-"string", "name": "ontologySource"}, {"doc": "", "type": "string",
-"name": "id"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "name"}]}], "name": "species"}, {"default": null,
-"doc": "", "type": ["null", "OntologyTerm"], "name": "sex"},
-{"default": null, "doc": "", "type": ["null", "OntologyTerm"], "name":
-"developmentalStage"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "dateOfBirth"}, {"default": [], "doc": "", "type":
-{"items": "OntologyTerm", "type": "array"}, "name": "diseases"},
+"type": ["null", "string"], "name": "description"}, {"doc": "",
+"type": "string", "name": "recordCreateTime"}, {"doc": "", "type":
+"string", "name": "recordUpdateTime"}, {"default": null, "doc": "",
+"type": ["null", {"doc": "", "type": "record", "name": "OntologyTerm",
+"fields": [{"doc": "", "type": "string", "name": "ontologySource"},
+{"doc": "", "type": "string", "name": "id"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "name"}]}], "name":
+"species"}, {"default": null, "doc": "", "type": ["null",
+"OntologyTerm"], "name": "sex"}, {"default": null, "doc": "", "type":
+["null", "OntologyTerm"], "name": "developmentalStage"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "dateOfBirth"},
 {"default": [], "doc": "", "type": {"items": "OntologyTerm", "type":
-"array"}, "name": "phenotypes"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "stagingSystem"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "clinicalTreatment"},
+"array"}, "name": "diseases"}, {"default": [], "doc": "", "type":
+{"items": "OntologyTerm", "type": "array"}, "name": "phenotypes"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"strain"}, {"default": {}, "doc": "", "type": {"values": {"items":
-"string", "type": "array"}, "type": "map"}, "name": "info"}], "doc":
-""}
+"stagingSystem"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "clinicalTreatment"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "strain"}, {"default": {}, "doc":
+"", "type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "id",
+        "recordCreateTime",
+        "recordUpdateTime",
     ])
 
     @classmethod
@@ -1549,15 +1667,14 @@ null, "doc": "", "type": ["null", "long"], "name": "updated"},
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'clinicalTreatment', 'created', 'dateOfBirth', 'description',
+        'clinicalTreatment', 'dateOfBirth', 'description',
         'developmentalStage', 'diseases', 'groupIds', 'id', 'info',
-        'name', 'phenotypes', 'sex', 'species', 'stagingSystem',
-        'strain', 'updated'
+        'name', 'phenotypes', 'recordCreateTime', 'recordUpdateTime',
+        'sex', 'species', 'stagingSystem', 'strain'
     ]
 
     def __init__(self):
         self.clinicalTreatment = None
-        self.created = None
         self.dateOfBirth = None
         self.description = None
         self.developmentalStage = None
@@ -1567,11 +1684,12 @@ null, "doc": "", "type": ["null", "long"], "name": "updated"},
         self.info = {}
         self.name = None
         self.phenotypes = []
+        self.recordCreateTime = None
+        self.recordUpdateTime = None
         self.sex = None
         self.species = None
         self.stagingSystem = None
         self.strain = None
-        self.updated = None
 
 
 class IndividualGroup(ProtocolElement):
@@ -1583,16 +1701,18 @@ class IndividualGroup(ProtocolElement):
 "IndividualGroup", "fields": [{"doc": "", "type": "string", "name":
 "id"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "name"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "description"}, {"default": null, "doc": "",
-"type": ["null", "long"], "name": "created"}, {"default": null, "doc":
-"", "type": ["null", "long"], "name": "updated"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "type"}, {"default":
-{}, "doc": "", "type": {"values": {"items": "string", "type":
-"array"}, "type": "map"}, "name": "info"}], "doc": ""}
+"string"], "name": "description"}, {"doc": "", "type": "string",
+"name": "recordCreateTime"}, {"doc": "", "type": "string", "name":
+"recordUpdateTime"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "type"}, {"default": {}, "doc": "", "type":
+{"values": {"items": "string", "type": "array"}, "type": "map"},
+"name": "info"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "id",
+        "recordCreateTime",
+        "recordUpdateTime",
     ])
 
     @classmethod
@@ -1607,18 +1727,18 @@ class IndividualGroup(ProtocolElement):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'created', 'description', 'id', 'info', 'name', 'type',
-        'updated'
+        'description', 'id', 'info', 'name', 'recordCreateTime',
+        'recordUpdateTime', 'type'
     ]
 
     def __init__(self):
-        self.created = None
         self.description = None
         self.id = None
         self.info = {}
         self.name = None
+        self.recordCreateTime = None
+        self.recordUpdateTime = None
         self.type = None
-        self.updated = None
 
 
 class Join(ProtocolElement):
@@ -2026,24 +2146,24 @@ class ReadAlignment(ProtocolElement):
 "ReadAlignment", "fields": [{"doc": "", "type": ["null", "string"],
 "name": "id"}, {"doc": "", "type": "string", "name": "readGroupId"},
 {"doc": "", "type": "string", "name": "fragmentId"}, {"doc": "",
-"type": "string", "name": "fragmentName"}, {"default": false, "doc":
-"", "type": "boolean", "name": "properPlacement"}, {"default": false,
-"doc": "", "type": "boolean", "name": "duplicateFragment"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"numberReads"}, {"default": null, "doc": "", "type": ["null", "int"],
-"name": "fragmentLength"}, {"default": null, "doc": "", "type":
-["null", "int"], "name": "readNumber"}, {"default": false, "doc": "",
-"type": "boolean", "name": "failedVendorQualityChecks"}, {"default":
-null, "doc": "", "type": ["null", {"doc": "", "type": "record",
-"name": "LinearAlignment", "fields": [{"doc": "", "type": {"doc": "",
-"type": "record", "name": "Side", "fields": [{"doc": "", "type":
-{"doc": "", "type": "record", "name": "Position", "fields":
-[{"default": null, "doc": "", "type": ["null", "string"], "name":
-"sequenceId"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "referenceName"}, {"doc": "", "type": "long",
-"name": "position"}]}, "name": "base"}, {"doc": "", "type":
-{"symbols": ["NEG_STRAND", "POS_STRAND"], "doc": "", "type": "enum",
-"name": "Strand"}, "name": "strand"}]}, "name": "position"},
+"type": "string", "name": "fragmentName"}, {"default": null, "doc":
+"", "type": ["null", "boolean"], "name": "properPlacement"},
+{"default": null, "doc": "", "type": ["null", "boolean"], "name":
+"duplicateFragment"}, {"default": null, "doc": "", "type": ["null",
+"int"], "name": "numberReads"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "fragmentLength"}, {"default": null, "doc":
+"", "type": ["null", "int"], "name": "readNumber"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name":
+"failedVendorQualityChecks"}, {"default": null, "doc": "", "type":
+["null", {"doc": "", "type": "record", "name": "LinearAlignment",
+"fields": [{"doc": "", "type": {"doc": "", "type": "record", "name":
+"Side", "fields": [{"doc": "", "type": {"doc": "", "type": "record",
+"name": "Position", "fields": [{"default": null, "doc": "", "type":
+["null", "string"], "name": "sequenceId"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "referenceName"}, {"doc": "",
+"type": "long", "name": "position"}]}, "name": "base"}, {"doc": "",
+"type": {"symbols": ["NEG_STRAND", "POS_STRAND"], "doc": "", "type":
+"enum", "name": "Strand"}, "name": "strand"}]}, "name": "position"},
 {"default": null, "doc": "", "type": ["null", "int"], "name":
 "mappingQuality"}, {"default": [], "doc": "", "type": {"items":
 {"doc": "", "type": "record", "name": "CigarUnit", "fields": [{"doc":
@@ -2053,7 +2173,8 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
 "CigarOperation"}, "name": "operation"}, {"doc": "", "type": "long",
 "name": "operationLength"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "referenceSequence"}]}, "type": "array"},
-"name": "cigar"}]}, {"doc": "", "type": "record", "name":
+"name": "cigar"}]}], "name": "alignment"}, {"default": null, "doc":
+"", "type": ["null", {"doc": "", "type": "record", "name":
 "GraphAlignment", "fields": [{"doc": "", "type": {"doc": "", "type":
 "record", "name": "Path", "fields": [{"default": [], "doc": "",
 "type": {"items": {"doc": "", "type": "record", "name": "Segment",
@@ -2062,14 +2183,15 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
 "segments"}]}, "name": "path"}, {"default": null, "doc": "", "type":
 ["null", "int"], "name": "mappingQuality"}, {"default": [], "doc": "",
 "type": {"items": "CigarUnit", "type": "array"}, "name": "cigar"}]}],
-"name": "alignment"}, {"default": false, "doc": "", "type": "boolean",
-"name": "secondaryAlignment"}, {"default": false, "doc": "", "type":
-"boolean", "name": "supplementaryAlignment"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "alignedSequence"},
-{"default": [], "doc": "", "type": {"items": "int", "type": "array"},
-"name": "alignedQuality"}, {"default": null, "doc": "", "type":
-["null", "Side"], "name": "nextMatePosition"}, {"default": {}, "doc":
-"", "type": {"values": {"items": "string", "type": "array"}, "type":
+"name": "graphAlignment"}, {"default": null, "doc": "", "type":
+["null", "boolean"], "name": "secondaryAlignment"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name":
+"supplementaryAlignment"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "alignedSequence"}, {"default": [], "doc":
+"", "type": {"items": "int", "type": "array"}, "name":
+"alignedQuality"}, {"default": null, "doc": "", "type": ["null",
+"Side"], "name": "nextMatePosition"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
 "map"}, "name": "info"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
@@ -2084,6 +2206,7 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
     def isEmbeddedType(cls, fieldName):
         embeddedTypes = {
             'alignment': LinearAlignment,
+            'graphAlignment': GraphAlignment,
             'nextMatePosition': Side,
         }
         return fieldName in embeddedTypes
@@ -2092,6 +2215,7 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
     def getEmbeddedType(cls, fieldName):
         embeddedTypes = {
             'alignment': LinearAlignment,
+            'graphAlignment': GraphAlignment,
             'nextMatePosition': Side,
         }
 
@@ -2100,30 +2224,79 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
     __slots__ = [
         'alignedQuality', 'alignedSequence', 'alignment',
         'duplicateFragment', 'failedVendorQualityChecks',
-        'fragmentId', 'fragmentLength', 'fragmentName', 'id', 'info',
-        'nextMatePosition', 'numberReads', 'properPlacement',
-        'readGroupId', 'readNumber', 'secondaryAlignment',
-        'supplementaryAlignment'
+        'fragmentId', 'fragmentLength', 'fragmentName',
+        'graphAlignment', 'id', 'info', 'nextMatePosition',
+        'numberReads', 'properPlacement', 'readGroupId', 'readNumber',
+        'secondaryAlignment', 'supplementaryAlignment'
     ]
 
     def __init__(self):
         self.alignedQuality = []
         self.alignedSequence = None
         self.alignment = None
-        self.duplicateFragment = False
-        self.failedVendorQualityChecks = False
+        self.duplicateFragment = None
+        self.failedVendorQualityChecks = None
         self.fragmentId = None
         self.fragmentLength = None
         self.fragmentName = None
+        self.graphAlignment = None
         self.id = None
         self.info = {}
         self.nextMatePosition = None
         self.numberReads = None
-        self.properPlacement = False
+        self.properPlacement = None
         self.readGroupId = None
         self.readNumber = None
-        self.secondaryAlignment = False
-        self.supplementaryAlignment = False
+        self.secondaryAlignment = None
+        self.supplementaryAlignment = None
+
+
+class ReadCounts(ProtocolElement):
+    """
+    Details of the read counts.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name": "ReadCounts",
+"fields": [{"doc": "", "type": "string", "name": "analysisId"},
+{"doc": "", "type": "int", "name": "totalReadCount"}, {"doc": "",
+"type": "int", "name": "uniqueCount"}, {"doc": "", "type": "int",
+"name": "multiCount"}, {"doc": "", "type": "int", "name":
+"uniqueSpliceCount"}, {"doc": "", "type": "int", "name":
+"multiSpliceCount"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "analysisId",
+        "multiCount",
+        "multiSpliceCount",
+        "totalReadCount",
+        "uniqueCount",
+        "uniqueSpliceCount",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'analysisId', 'multiCount', 'multiSpliceCount',
+        'totalReadCount', 'uniqueCount', 'uniqueSpliceCount'
+    ]
+
+    def __init__(self):
+        self.analysisId = None
+        self.multiCount = None
+        self.multiSpliceCount = None
+        self.totalReadCount = None
+        self.uniqueCount = None
+        self.uniqueSpliceCount = None
 
 
 class ReadGroup(ProtocolElement):
@@ -2141,43 +2314,43 @@ class ReadGroup(ProtocolElement):
 "", "type": "record", "name": "Experiment", "fields": [{"doc": "",
 "type": "string", "name": "id"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "name"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "description"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "created"}, {"default":
-null, "doc": "", "type": ["null", "long"], "name": "updated"},
-{"default": null, "doc": "", "type": ["null", "long"], "name":
-"runDate"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "molecule"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "strategy"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "selection"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "library"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "libraryLayout"},
-{"doc": "", "type": ["null", "string"], "name": "instrumentModel"},
+"type": ["null", "string"], "name": "description"}, {"doc": "",
+"type": "string", "name": "recordCreateTime"}, {"doc": "", "type":
+"string", "name": "recordUpdateTime"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "runTime"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "molecule"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"instrumentDataFile"}, {"doc": "", "type": ["null", "string"], "name":
-"sequencingCenter"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "platformUnit"}, {"default": {}, "doc": "", "type":
-{"values": {"items": "string", "type": "array"}, "type": "map"},
-"name": "info"}]}], "name": "experiment"}, {"default": null, "doc":
-"", "type": ["null", "int"], "name": "predictedInsertSize"},
-{"default": null, "doc": "", "type": ["null", "long"], "name":
-"created"}, {"default": null, "doc": "", "type": ["null", "long"],
-"name": "updated"}, {"default": null, "doc": "", "type": ["null",
-{"fields": [{"default": null, "doc": "", "type": ["null", "long"],
-"name": "alignedReadCount"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "unalignedReadCount"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "baseCount"}], "type":
-"record", "name": "ReadStats"}], "name": "stats"}, {"default": [],
-"doc": "", "type": {"items": {"fields": [{"default": null, "doc": "",
-"type": ["null", "string"], "name": "commandLine"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "id"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "name"},
+"strategy"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "selection"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "library"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "libraryLayout"}, {"doc": "", "type":
+["null", "string"], "name": "instrumentModel"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "instrumentDataFile"},
+{"doc": "", "type": ["null", "string"], "name": "sequencingCenter"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"prevProgramId"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "version"}], "type": "record", "name": "Program"},
-"type": "array"}, "name": "programs"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "referenceSetId"}, {"default": {},
-"doc": "", "type": {"values": {"items": "string", "type": "array"},
-"type": "map"}, "name": "info"}]}
+"platformUnit"}, {"default": {}, "doc": "", "type": {"values":
+{"items": "string", "type": "array"}, "type": "map"}, "name":
+"info"}]}], "name": "experiment"}, {"default": null, "doc": "",
+"type": ["null", "int"], "name": "predictedInsertSize"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "created"},
+{"default": null, "doc": "", "type": ["null", "long"], "name":
+"updated"}, {"default": null, "doc": "", "type": ["null", {"fields":
+[{"default": null, "doc": "", "type": ["null", "long"], "name":
+"alignedReadCount"}, {"default": null, "doc": "", "type": ["null",
+"long"], "name": "unalignedReadCount"}, {"default": null, "doc": "",
+"type": ["null", "long"], "name": "baseCount"}], "type": "record",
+"name": "ReadStats"}], "name": "stats"}, {"default": [], "doc": "",
+"type": {"items": {"fields": [{"default": null, "doc": "", "type":
+["null", "string"], "name": "commandLine"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "id"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "name"}, {"default":
+null, "doc": "", "type": ["null", "string"], "name": "prevProgramId"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"version"}], "type": "record", "name": "Program"}, "type": "array"},
+"name": "programs"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "referenceSetId"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}]}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
@@ -2251,40 +2424,40 @@ null, "doc": "", "type": ["null", "long"], "name": "baseCount"}],
 ["null", {"doc": "", "type": "record", "name": "Experiment", "fields":
 [{"doc": "", "type": "string", "name": "id"}, {"default": null, "doc":
 "", "type": ["null", "string"], "name": "name"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "description"},
+"doc": "", "type": ["null", "string"], "name": "description"}, {"doc":
+"", "type": "string", "name": "recordCreateTime"}, {"doc": "", "type":
+"string", "name": "recordUpdateTime"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "runTime"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "molecule"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"strategy"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "selection"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "library"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "libraryLayout"}, {"doc": "", "type":
+["null", "string"], "name": "instrumentModel"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "instrumentDataFile"},
+{"doc": "", "type": ["null", "string"], "name": "sequencingCenter"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"platformUnit"}, {"default": {}, "doc": "", "type": {"values":
+{"items": "string", "type": "array"}, "type": "map"}, "name":
+"info"}]}], "name": "experiment"}, {"default": null, "doc": "",
+"type": ["null", "int"], "name": "predictedInsertSize"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "created"},
 {"default": null, "doc": "", "type": ["null", "long"], "name":
-"created"}, {"default": null, "doc": "", "type": ["null", "long"],
-"name": "updated"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "runDate"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "molecule"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "strategy"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "selection"},
+"updated"}, {"default": null, "doc": "", "type": ["null",
+"ReadStats"], "name": "stats"}, {"default": [], "doc": "", "type":
+{"items": {"fields": [{"default": null, "doc": "", "type": ["null",
+"string"], "name": "commandLine"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "id"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "name"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "prevProgramId"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"library"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "libraryLayout"}, {"doc": "", "type": ["null", "string"],
-"name": "instrumentModel"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "instrumentDataFile"}, {"doc": "", "type":
-["null", "string"], "name": "sequencingCenter"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "platformUnit"},
-{"default": {}, "doc": "", "type": {"values": {"items": "string",
-"type": "array"}, "type": "map"}, "name": "info"}]}], "name":
-"experiment"}, {"default": null, "doc": "", "type": ["null", "int"],
-"name": "predictedInsertSize"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "created"}, {"default": null, "doc": "",
-"type": ["null", "long"], "name": "updated"}, {"default": null, "doc":
-"", "type": ["null", "ReadStats"], "name": "stats"}, {"default": [],
-"doc": "", "type": {"items": {"fields": [{"default": null, "doc": "",
-"type": ["null", "string"], "name": "commandLine"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "id"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "name"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"prevProgramId"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "version"}], "type": "record", "name": "Program"},
-"type": "array"}, "name": "programs"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "referenceSetId"}, {"default": {},
-"doc": "", "type": {"values": {"items": "string", "type": "array"},
-"type": "map"}, "name": "info"}], "type": "record", "name":
-"ReadGroup"}, "type": "array"}, "name": "readGroups"}]}
+"version"}], "type": "record", "name": "Program"}, "type": "array"},
+"name": "programs"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "referenceSetId"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "type": "record", "name": "ReadGroup"},
+"type": "array"}, "name": "readGroups"}]}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
@@ -2585,6 +2758,52 @@ null, "doc": "", "type": ["null", "string"], "name":
         self.observed = None
 
 
+class RnaQuantification(ProtocolElement):
+    """
+    Top level identifying information
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh", "type": "record", "name":
+"RnaQuantification", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "name"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "description"}, {"doc": "", "type": "string",
+"name": "readGroupId"}, {"default": [], "doc": "", "type": {"items":
+"string", "type": "array"}, "name": "programIds"}, {"default": [],
+"doc": "", "type": {"items": "string", "type": "array"}, "name":
+"annotationIds"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "id",
+        "readGroupId",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'annotationIds', 'description', 'id', 'name', 'programIds',
+        'readGroupId'
+    ]
+
+    def __init__(self):
+        self.annotationIds = []
+        self.description = None
+        self.id = None
+        self.name = None
+        self.programIds = []
+        self.readGroupId = None
+
+
 class Sample(ProtocolElement):
     """
     A biological sample used in an experiment. (e.g. whole blood from
@@ -2597,27 +2816,29 @@ null, "doc": "", "type": ["null", "string"], "name": "individualId"},
 {"default": [], "doc": "", "type": {"items": "string", "type":
 "array"}, "name": "accessions"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "name"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "description"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "created"}, {"default":
-null, "doc": "", "type": ["null", "long"], "name": "updated"},
-{"default": null, "doc": "", "type": ["null", "long"], "name":
-"samplingDate"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "age"}, {"default": null, "doc": "", "type": ["null",
-{"doc": "", "type": "record", "name": "OntologyTerm", "fields":
-[{"doc": "", "type": "string", "name": "ontologySource"}, {"doc": "",
-"type": "string", "name": "id"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "name"}]}], "name": "cellType"},
-{"default": null, "doc": "", "type": ["null", "OntologyTerm"], "name":
-"cellLine"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "geocode"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "sampleType"}, {"default": null, "doc": "", "type":
-["null", "OntologyTerm"], "name": "organismPart"}, {"default": {},
-"doc": "", "type": {"values": {"items": "string", "type": "array"},
-"type": "map"}, "name": "info"}], "doc": ""}
+"type": ["null", "string"], "name": "description"}, {"doc": "",
+"type": "string", "name": "recordCreateTime"}, {"doc": "", "type":
+"string", "name": "recordUpdateTime"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "samplingDate"}, {"default": null,
+"doc": "", "type": ["null", "long"], "name": "ageAtSampling"},
+{"default": null, "doc": "", "type": ["null", {"doc": "", "type":
+"record", "name": "OntologyTerm", "fields": [{"doc": "", "type":
+"string", "name": "ontologySource"}, {"doc": "", "type": "string",
+"name": "id"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}]}], "name": "cellType"}, {"default": null,
+"doc": "", "type": ["null", "OntologyTerm"], "name": "cellLine"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"geocode"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "sampleType"}, {"default": null, "doc": "", "type": ["null",
+"OntologyTerm"], "name": "organismPart"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "id",
+        "recordCreateTime",
+        "recordUpdateTime",
     ])
 
     @classmethod
@@ -2640,18 +2861,17 @@ null, "doc": "", "type": ["null", "long"], "name": "updated"},
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'accessions', 'age', 'cellLine', 'cellType', 'created',
+        'accessions', 'ageAtSampling', 'cellLine', 'cellType',
         'description', 'geocode', 'id', 'individualId', 'info',
-        'name', 'organismPart', 'sampleType', 'samplingDate',
-        'updated'
+        'name', 'organismPart', 'recordCreateTime',
+        'recordUpdateTime', 'sampleType', 'samplingDate'
     ]
 
     def __init__(self):
         self.accessions = []
-        self.age = None
+        self.ageAtSampling = None
         self.cellLine = None
         self.cellType = None
-        self.created = None
         self.description = None
         self.geocode = None
         self.id = None
@@ -2659,101 +2879,10 @@ null, "doc": "", "type": ["null", "long"], "name": "updated"},
         self.info = {}
         self.name = None
         self.organismPart = None
+        self.recordCreateTime = None
+        self.recordUpdateTime = None
         self.sampleType = None
         self.samplingDate = None
-        self.updated = None
-
-
-class SearchAlleleCallsRequest(SearchRequest):
-    """
-    This request maps to the body of `POST /allelecalls/search` as
-    JSON.
-    """
-    _schemaSource = """
-{"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchAlleleCallsRequest", "fields": [{"default": [], "doc": "",
-"type": {"items": "string", "type": "array"}, "name": "callSetIds"},
-{"default": [], "doc": "", "type": {"items": "string", "type":
-"array"}, "name": "variantSetIds"}, {"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "alleleIds"},
-{"default": [], "doc": "", "type": {"items": "string", "type":
-"array"}, "name": "variantIds"}, {"default": null, "doc": "", "type":
-["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
-"""
-    schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
-
-    @classmethod
-    def isEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-        return fieldName in embeddedTypes
-
-    @classmethod
-    def getEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-
-        return embeddedTypes[fieldName]
-
-    __slots__ = [
-        'alleleIds', 'callSetIds', 'pageSize', 'pageToken',
-        'variantIds', 'variantSetIds'
-    ]
-
-    def __init__(self):
-        self.alleleIds = []
-        self.callSetIds = []
-        self.pageSize = None
-        self.pageToken = None
-        self.variantIds = []
-        self.variantSetIds = []
-
-
-class SearchAlleleCallsResponse(SearchResponse):
-    """
-    This is the response from `POST /allelecalls/search` expressed as
-    JSON.
-    """
-    _schemaSource = """
-{"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchAlleleCallsResponse", "fields": [{"default": [], "doc": "",
-"type": {"items": {"namespace": "org.ga4gh.models", "type": "record",
-"name": "AlleleCall", "fields": [{"doc": "", "type": "string", "name":
-"callSetId"}, {"doc": "", "type": "string", "name": "alleleId"},
-{"doc": "", "type": ["null", "string"], "name": "variantId"}, {"doc":
-"", "type": "double", "name": "totalCopies"}, {"doc": "", "type":
-{"items": "string", "type": "array"}, "name": "phaseset"}, {"default":
-{}, "doc": "", "type": {"values": {"items": "string", "type":
-"array"}, "type": "map"}, "name": "info"}], "doc": ""}, "type":
-"array"}, "name": "alleleCalls"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "nextPageToken"}], "doc": ""}
-"""
-    schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
-    _valueListName = "alleleCalls"
-
-    @classmethod
-    def isEmbeddedType(cls, fieldName):
-        embeddedTypes = {
-            'alleleCalls': AlleleCall,
-        }
-        return fieldName in embeddedTypes
-
-    @classmethod
-    def getEmbeddedType(cls, fieldName):
-        embeddedTypes = {
-            'alleleCalls': AlleleCall,
-        }
-
-        return embeddedTypes[fieldName]
-
-    __slots__ = [
-        'alleleCalls', 'nextPageToken'
-    ]
-
-    def __init__(self):
-        self.alleleCalls = []
-        self.nextPageToken = None
 
 
 class SearchAllelesRequest(SearchRequest):
@@ -2762,19 +2891,19 @@ class SearchAllelesRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchAllelesRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "variantSetIds"},
-{"doc": "", "type": "string", "name": "sequenceId"}, {"doc": "",
-"type": "long", "name": "start"}, {"doc": "", "type": "long", "name":
-"end"}, {"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+"SearchAllelesRequest", "fields": [{"doc": "", "type": "string",
+"name": "variantSetId"}, {"doc": "", "type": "string", "name":
+"sequenceId"}, {"doc": "", "type": "long", "name": "start"}, {"doc":
+"", "type": "long", "name": "end"}, {"default": null, "doc": "",
+"type": ["null", "int"], "name": "pageSize"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "end",
         "sequenceId",
         "start",
+        "variantSetId",
     ])
 
     @classmethod
@@ -2790,7 +2919,7 @@ class SearchAllelesRequest(SearchRequest):
 
     __slots__ = [
         'end', 'pageSize', 'pageToken', 'sequenceId', 'start',
-        'variantSetIds'
+        'variantSetId'
     ]
 
     def __init__(self):
@@ -2799,7 +2928,7 @@ class SearchAllelesRequest(SearchRequest):
         self.pageToken = None
         self.sequenceId = None
         self.start = None
-        self.variantSetIds = []
+        self.variantSetId = None
 
 
 class SearchAllelesResponse(SearchResponse):
@@ -2906,8 +3035,8 @@ class SearchAnalysesResponse(SearchResponse):
 "id"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "name"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "description"}, {"default": null, "doc": "",
-"type": ["null", "long"], "name": "created"}, {"default": null, "doc":
-"", "type": ["null", "long"], "name": "updated"}, {"default": null,
+"type": ["null", "string"], "name": "recordCreateTime"}, {"doc": "",
+"type": "string", "name": "recordUpdateTime"}, {"default": null,
 "doc": "", "type": ["null", "string"], "name": "type"}, {"default":
 [], "doc": "", "type": {"items": "string", "type": "array"}, "name":
 "software"}, {"default": {}, "doc": "", "type": {"values": {"items":
@@ -2949,15 +3078,16 @@ class SearchCallSetsRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchCallSetsRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "variantSetIds"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"name"}, {"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+"SearchCallSetsRequest", "fields": [{"doc": "", "type": "string",
+"name": "variantSetId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
+    requiredFields = set([
+        "variantSetId",
+    ])
 
     @classmethod
     def isEmbeddedType(cls, fieldName):
@@ -2971,14 +3101,14 @@ class SearchCallSetsRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'name', 'pageSize', 'pageToken', 'variantSetIds'
+        'name', 'pageSize', 'pageToken', 'variantSetId'
     ]
 
     def __init__(self):
         self.name = None
         self.pageSize = None
         self.pageToken = None
-        self.variantSetIds = []
+        self.variantSetId = None
 
 
 class SearchCallSetsResponse(SearchResponse):
@@ -3027,97 +3157,6 @@ class SearchCallSetsResponse(SearchResponse):
 
     def __init__(self):
         self.callSets = []
-        self.nextPageToken = None
-
-
-class SearchCallsRequest(SearchRequest):
-    """
-    This request maps to the body of `POST /calls/search` as JSON.
-    """
-    _schemaSource = """
-{"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchCallsRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "callSetIds"},
-{"default": [], "doc": "", "type": {"items": "string", "type":
-"array"}, "name": "variantSetIds"}, {"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "variantIds"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
-"""
-    schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
-
-    @classmethod
-    def isEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-        return fieldName in embeddedTypes
-
-    @classmethod
-    def getEmbeddedType(cls, fieldName):
-        embeddedTypes = {}
-
-        return embeddedTypes[fieldName]
-
-    __slots__ = [
-        'callSetIds', 'pageSize', 'pageToken', 'variantIds',
-        'variantSetIds'
-    ]
-
-    def __init__(self):
-        self.callSetIds = []
-        self.pageSize = None
-        self.pageToken = None
-        self.variantIds = []
-        self.variantSetIds = []
-
-
-class SearchCallsResponse(SearchResponse):
-    """
-    This is the response from `POST /calls/search` expressed as JSON.
-    """
-    _schemaSource = """
-{"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchCallsResponse", "fields": [{"default": [], "doc": "", "type":
-{"items": {"namespace": "org.ga4gh.models", "type": "record", "name":
-"Call", "fields": [{"doc": "", "type": ["null", "string"], "name":
-"callSetId"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "callSetName"}, {"doc": "", "type": ["null", "string"],
-"name": "variantId"}, {"default": [], "doc": "", "type": {"items":
-"int", "type": "array"}, "name": "genotype"}, {"default": null, "doc":
-"", "type": ["null", "string", {"items": "string", "type": "array"}],
-"name": "phaseset"}, {"default": [], "doc": "", "type": {"items":
-"double", "type": "array"}, "name": "genotypeLikelihood"}, {"default":
-{}, "doc": "", "type": {"values": {"items": "string", "type":
-"array"}, "type": "map"}, "name": "info"}], "doc": ""}, "type":
-"array"}, "name": "calls"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "nextPageToken"}], "doc": ""}
-"""
-    schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
-    _valueListName = "calls"
-
-    @classmethod
-    def isEmbeddedType(cls, fieldName):
-        embeddedTypes = {
-            'calls': Call,
-        }
-        return fieldName in embeddedTypes
-
-    @classmethod
-    def getEmbeddedType(cls, fieldName):
-        embeddedTypes = {
-            'calls': Call,
-        }
-
-        return embeddedTypes[fieldName]
-
-    __slots__ = [
-        'calls', 'nextPageToken'
-    ]
-
-    def __init__(self):
-        self.calls = []
         self.nextPageToken = None
 
 
@@ -3246,25 +3285,24 @@ class SearchExperimentsResponse(SearchResponse):
 "name": "Experiment", "fields": [{"doc": "", "type": "string", "name":
 "id"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "name"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "description"}, {"default": null, "doc": "",
-"type": ["null", "long"], "name": "created"}, {"default": null, "doc":
-"", "type": ["null", "long"], "name": "updated"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "runDate"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "molecule"},
+"string"], "name": "description"}, {"doc": "", "type": "string",
+"name": "recordCreateTime"}, {"doc": "", "type": "string", "name":
+"recordUpdateTime"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "runTime"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "molecule"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "strategy"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "selection"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"strategy"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "selection"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "library"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "libraryLayout"}, {"doc": "", "type":
-["null", "string"], "name": "instrumentModel"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "instrumentDataFile"},
-{"doc": "", "type": ["null", "string"], "name": "sequencingCenter"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"platformUnit"}, {"default": {}, "doc": "", "type": {"values":
-{"items": "string", "type": "array"}, "type": "map"}, "name":
-"info"}], "doc": ""}, "type": "array"}, "name": "experiments"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"nextPageToken"}], "doc": ""}
+"library"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "libraryLayout"}, {"doc": "", "type": ["null", "string"],
+"name": "instrumentModel"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "instrumentDataFile"}, {"doc": "", "type":
+["null", "string"], "name": "sequencingCenter"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "platformUnit"},
+{"default": {}, "doc": "", "type": {"values": {"items": "string",
+"type": "array"}, "type": "map"}, "name": "info"}], "doc": ""},
+"type": "array"}, "name": "experiments"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "nextPageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -3294,16 +3332,196 @@ null, "doc": "", "type": ["null", "string"], "name": "molecule"},
         self.nextPageToken = None
 
 
+class SearchExpressionLevelRequest(SearchRequest):
+    """
+    This request maps to the body of 'POST /expressionlevel/search' as
+    JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchExpressionLevelRequest", "fields": [{"default": null, "doc":
+"", "type": ["null", "string"], "name": "expressionLevelId"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"featureGroupId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "rnaQuantificationId"}, {"default": null, "doc":
+"", "type": ["null", "int"], "name": "pageSize"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "pageToken"}], "doc":
+""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'expressionLevelId', 'featureGroupId', 'pageSize',
+        'pageToken', 'rnaQuantificationId'
+    ]
+
+    def __init__(self):
+        self.expressionLevelId = None
+        self.featureGroupId = None
+        self.pageSize = None
+        self.pageToken = None
+        self.rnaQuantificationId = None
+
+
+class SearchExpressionLevelResponse(SearchResponse):
+    """
+    This is the response from 'POST /expressionlevel/search' expressed
+    as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchExpressionLevelResponse", "fields": [{"default": [], "doc": "",
+"type": {"items": {"namespace": "org.ga4gh", "type": "record", "name":
+"ExpressionLevel", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "featureGroupId"},
+{"doc": "", "type": "string", "name": "annotationId"}, {"doc": "",
+"type": "float", "name": "rawReadCount"}, {"default": null, "doc": "",
+"type": ["null", "float"], "name": "expression"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name": "isNormalized"},
+{"default": null, "doc": "", "type": ["null", {"symbols": ["FPKM",
+"RPM"], "doc": "", "type": "enum", "name": "ExpressionUnits"}],
+"name": "units"}, {"default": null, "doc": "", "type": ["null",
+"float"], "name": "score"}, {"default": [], "doc": "", "type":
+{"items": "float", "type": "array"}, "name": "confInterval"}], "doc":
+""}, "type": "array"}, "name": "expressionLevel"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "nextPageToken"}],
+"doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "expressionLevel"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'expressionLevel': ExpressionLevel,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'expressionLevel': ExpressionLevel,
+        }
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'expressionLevel', 'nextPageToken'
+    ]
+
+    def __init__(self):
+        self.expressionLevel = []
+        self.nextPageToken = None
+
+
+class SearchFeatureGroupRequest(SearchRequest):
+    """
+    This request maps to the body of 'POST /featuregroup/search' as
+    JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchFeatureGroupRequest", "fields": [{"default": null, "doc": "",
+"type": ["null", "string"], "name": "featureGroupId"}, {"default":
+null, "doc": "", "type": ["null", "int"], "name": "pageSize"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"pageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'featureGroupId', 'pageSize', 'pageToken'
+    ]
+
+    def __init__(self):
+        self.featureGroupId = None
+        self.pageSize = None
+        self.pageToken = None
+
+
+class SearchFeatureGroupResponse(SearchResponse):
+    """
+    This is the response from 'POST /featuregroup/search' expressed as
+    JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchFeatureGroupResponse", "fields": [{"default": [], "doc": "",
+"type": {"items": {"namespace": "org.ga4gh", "type": "record", "name":
+"FeatureGroup", "fields": [{"doc": "", "type": "string", "name":
+"id"}, {"doc": "", "type": "string", "name": "analysisId"},
+{"default": null, "doc": "", "type": ["null", "string"], "name":
+"name"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "description"}, {"default": null, "doc": "", "type": ["null",
+"long"], "name": "created"}, {"default": null, "doc": "", "type":
+["null", "long"], "name": "updated"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "doc": ""}, "type": "array"}, "name":
+"featureGroup"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "featureGroup"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'featureGroup': FeatureGroup,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'featureGroup': FeatureGroup,
+        }
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'featureGroup', 'nextPageToken'
+    ]
+
+    def __init__(self):
+        self.featureGroup = []
+        self.nextPageToken = None
+
+
 class SearchFeaturesRequest(SearchRequest):
     """
     This request maps to the body of `POST /features/search` as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchFeaturesRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "featureSetIds"},
-{"default": [], "doc": "", "type": {"items": "string", "type":
-"array"}, "name": "parentIds"}, {"default": null, "doc": "", "type":
+"SearchFeaturesRequest", "fields": [{"doc": "", "type": ["null",
+"string"], "name": "featureSetId"}, {"doc": "", "type": ["null",
+"string"], "name": "parentId"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "referenceName"}, {"default": null, "doc":
 "", "type": ["null", "string"], "name": "referenceId"}, {"doc": "",
 "type": "long", "name": "start"}, {"doc": "", "type": "long", "name":
@@ -3319,6 +3537,8 @@ class SearchFeaturesRequest(SearchRequest):
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "end",
+        "featureSetId",
+        "parentId",
         "start",
     ])
 
@@ -3338,17 +3558,17 @@ class SearchFeaturesRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'end', 'featureSetIds', 'features', 'pageSize', 'pageToken',
-        'parentIds', 'referenceId', 'referenceName', 'start'
+        'end', 'featureSetId', 'features', 'pageSize', 'pageToken',
+        'parentId', 'referenceId', 'referenceName', 'start'
     ]
 
     def __init__(self):
         self.end = None
-        self.featureSetIds = []
+        self.featureSetId = None
         self.features = []
         self.pageSize = None
         self.pageToken = None
-        self.parentIds = []
+        self.parentId = None
         self.referenceId = None
         self.referenceName = None
         self.start = None
@@ -3461,15 +3681,14 @@ class SearchIndividualGroupsResponse(SearchResponse):
 "record", "name": "IndividualGroup", "fields": [{"doc": "", "type":
 "string", "name": "id"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "name"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "description"}, {"default": null, "doc":
-"", "type": ["null", "long"], "name": "created"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "updated"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name": "type"},
-{"default": {}, "doc": "", "type": {"values": {"items": "string",
-"type": "array"}, "type": "map"}, "name": "info"}], "doc": ""},
-"type": "array"}, "name": "individualGroups"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "nextPageToken"}],
-"doc": ""}
+["null", "string"], "name": "description"}, {"doc": "", "type":
+"string", "name": "recordCreateTime"}, {"doc": "", "type": "string",
+"name": "recordUpdateTime"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "type"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "doc": ""}, "type": "array"}, "name":
+"individualGroups"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -3506,15 +3725,16 @@ class SearchIndividualsRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchIndividualsRequest", "fields": [{"default": [], "doc": "",
-"type": {"items": "string", "type": "array"}, "name": "groupIds"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"name"}, {"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+"SearchIndividualsRequest", "fields": [{"doc": "", "type": "string",
+"name": "groupId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
+    requiredFields = set([
+        "groupId",
+    ])
 
     @classmethod
     def isEmbeddedType(cls, fieldName):
@@ -3528,11 +3748,11 @@ class SearchIndividualsRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'groupIds', 'name', 'pageSize', 'pageToken'
+        'groupId', 'name', 'pageSize', 'pageToken'
     ]
 
     def __init__(self):
-        self.groupIds = []
+        self.groupId = None
         self.name = None
         self.pageSize = None
         self.pageToken = None
@@ -3551,29 +3771,28 @@ class SearchIndividualsResponse(SearchResponse):
 "id"}, {"default": [], "doc": "", "type": {"items": "string", "type":
 "array"}, "name": "groupIds"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "name"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "description"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "created"}, {"default":
-null, "doc": "", "type": ["null", "long"], "name": "updated"},
-{"default": null, "doc": "", "type": ["null", {"doc": "", "type":
-"record", "name": "OntologyTerm", "fields": [{"doc": "", "type":
-"string", "name": "ontologySource"}, {"doc": "", "type": "string",
-"name": "id"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "name"}]}], "name": "species"}, {"default": null,
-"doc": "", "type": ["null", "OntologyTerm"], "name": "sex"},
-{"default": null, "doc": "", "type": ["null", "OntologyTerm"], "name":
-"developmentalStage"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "dateOfBirth"}, {"default": [], "doc": "", "type":
-{"items": "OntologyTerm", "type": "array"}, "name": "diseases"},
+"type": ["null", "string"], "name": "description"}, {"doc": "",
+"type": "string", "name": "recordCreateTime"}, {"doc": "", "type":
+"string", "name": "recordUpdateTime"}, {"default": null, "doc": "",
+"type": ["null", {"doc": "", "type": "record", "name": "OntologyTerm",
+"fields": [{"doc": "", "type": "string", "name": "ontologySource"},
+{"doc": "", "type": "string", "name": "id"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "name"}]}], "name":
+"species"}, {"default": null, "doc": "", "type": ["null",
+"OntologyTerm"], "name": "sex"}, {"default": null, "doc": "", "type":
+["null", "OntologyTerm"], "name": "developmentalStage"}, {"default":
+null, "doc": "", "type": ["null", "long"], "name": "dateOfBirth"},
 {"default": [], "doc": "", "type": {"items": "OntologyTerm", "type":
-"array"}, "name": "phenotypes"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "stagingSystem"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "clinicalTreatment"},
+"array"}, "name": "diseases"}, {"default": [], "doc": "", "type":
+{"items": "OntologyTerm", "type": "array"}, "name": "phenotypes"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"strain"}, {"default": {}, "doc": "", "type": {"values": {"items":
-"string", "type": "array"}, "type": "map"}, "name": "info"}], "doc":
-""}, "type": "array"}, "name": "individuals"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "nextPageToken"}],
-"doc": ""}
+"stagingSystem"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "clinicalTreatment"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "strain"}, {"default": {}, "doc":
+"", "type": {"values": {"items": "string", "type": "array"}, "type":
+"map"}, "name": "info"}], "doc": ""}, "type": "array"}, "name":
+"individuals"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -3709,15 +3928,16 @@ class SearchReadGroupSetsRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchReadGroupSetsRequest", "fields": [{"default": [], "doc": "",
-"type": {"items": "string", "type": "array"}, "name": "datasetIds"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"name"}, {"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+"SearchReadGroupSetsRequest", "fields": [{"doc": "", "type": "string",
+"name": "datasetId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
+    requiredFields = set([
+        "datasetId",
+    ])
 
     @classmethod
     def isEmbeddedType(cls, fieldName):
@@ -3731,11 +3951,11 @@ class SearchReadGroupSetsRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'datasetIds', 'name', 'pageSize', 'pageToken'
+        'datasetId', 'name', 'pageSize', 'pageToken'
     ]
 
     def __init__(self):
-        self.datasetIds = []
+        self.datasetId = None
         self.name = None
         self.pageSize = None
         self.pageToken = None
@@ -3769,42 +3989,41 @@ null, "doc": "", "type": ["null", "string"], "name": "name"},
 "record", "name": "Experiment", "fields": [{"doc": "", "type":
 "string", "name": "id"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "name"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "description"}, {"default": null, "doc":
-"", "type": ["null", "long"], "name": "created"}, {"default": null,
-"doc": "", "type": ["null", "long"], "name": "updated"}, {"default":
-null, "doc": "", "type": ["null", "long"], "name": "runDate"},
+["null", "string"], "name": "description"}, {"doc": "", "type":
+"string", "name": "recordCreateTime"}, {"doc": "", "type": "string",
+"name": "recordUpdateTime"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "runTime"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "molecule"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "strategy"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"molecule"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "strategy"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "selection"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "library"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "libraryLayout"}, {"doc": "",
-"type": ["null", "string"], "name": "instrumentModel"}, {"default":
-null, "doc": "", "type": ["null", "string"], "name":
-"instrumentDataFile"}, {"doc": "", "type": ["null", "string"], "name":
-"sequencingCenter"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "platformUnit"}, {"default": {}, "doc": "", "type":
-{"values": {"items": "string", "type": "array"}, "type": "map"},
-"name": "info"}]}], "name": "experiment"}, {"default": null, "doc":
-"", "type": ["null", "int"], "name": "predictedInsertSize"},
-{"default": null, "doc": "", "type": ["null", "long"], "name":
-"created"}, {"default": null, "doc": "", "type": ["null", "long"],
-"name": "updated"}, {"default": null, "doc": "", "type": ["null",
-"ReadStats"], "name": "stats"}, {"default": [], "doc": "", "type":
-{"items": {"fields": [{"default": null, "doc": "", "type": ["null",
-"string"], "name": "commandLine"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "id"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "name"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "prevProgramId"},
+"selection"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "library"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "libraryLayout"}, {"doc": "", "type": ["null",
+"string"], "name": "instrumentModel"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "instrumentDataFile"}, {"doc": "",
+"type": ["null", "string"], "name": "sequencingCenter"}, {"default":
+null, "doc": "", "type": ["null", "string"], "name": "platformUnit"},
+{"default": {}, "doc": "", "type": {"values": {"items": "string",
+"type": "array"}, "type": "map"}, "name": "info"}]}], "name":
+"experiment"}, {"default": null, "doc": "", "type": ["null", "int"],
+"name": "predictedInsertSize"}, {"default": null, "doc": "", "type":
+["null", "long"], "name": "created"}, {"default": null, "doc": "",
+"type": ["null", "long"], "name": "updated"}, {"default": null, "doc":
+"", "type": ["null", "ReadStats"], "name": "stats"}, {"default": [],
+"doc": "", "type": {"items": {"fields": [{"default": null, "doc": "",
+"type": ["null", "string"], "name": "commandLine"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "id"}, {"default":
+null, "doc": "", "type": ["null", "string"], "name": "name"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"version"}], "type": "record", "name": "Program"}, "type": "array"},
-"name": "programs"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "referenceSetId"}, {"default": {}, "doc": "",
-"type": {"values": {"items": "string", "type": "array"}, "type":
-"map"}, "name": "info"}], "type": "record", "name": "ReadGroup"},
-"type": "array"}, "name": "readGroups"}]}, "type": "array"}, "name":
-"readGroupSets"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "nextPageToken"}], "doc": ""}
+"prevProgramId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "version"}], "type": "record", "name": "Program"},
+"type": "array"}, "name": "programs"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "referenceSetId"}, {"default": {},
+"doc": "", "type": {"values": {"items": "string", "type": "array"},
+"type": "map"}, "name": "info"}], "type": "record", "name":
+"ReadGroup"}, "type": "array"}, "name": "readGroups"}]}, "type":
+"array"}, "name": "readGroupSets"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "nextPageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -3844,17 +4063,19 @@ class SearchReadsRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchReadsRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "readGroupIds"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"referenceId"}, {"default": null, "doc": "", "type": ["null", "long"],
-"name": "start"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "end"}, {"default": null, "doc": "", "type": ["null",
-"int"], "name": "pageSize"}, {"default": null, "doc": "", "type":
-["null", "string"], "name": "pageToken"}], "doc": ""}
+"SearchReadsRequest", "fields": [{"doc": "", "type": {"items":
+"string", "type": "array"}, "name": "readGroupIds"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "referenceId"},
+{"default": null, "doc": "", "type": ["null", "long"], "name":
+"start"}, {"default": null, "doc": "", "type": ["null", "long"],
+"name": "end"}, {"default": null, "doc": "", "type": ["null", "int"],
+"name": "pageSize"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
+    requiredFields = set([
+        "readGroupIds",
+    ])
 
     @classmethod
     def isEmbeddedType(cls, fieldName):
@@ -3876,7 +4097,7 @@ class SearchReadsRequest(SearchRequest):
         self.end = None
         self.pageSize = None
         self.pageToken = None
-        self.readGroupIds = []
+        self.readGroupIds = None
         self.referenceId = None
         self.start = None
 
@@ -3892,24 +4113,24 @@ class SearchReadsResponse(SearchResponse):
 "ReadAlignment", "fields": [{"doc": "", "type": ["null", "string"],
 "name": "id"}, {"doc": "", "type": "string", "name": "readGroupId"},
 {"doc": "", "type": "string", "name": "fragmentId"}, {"doc": "",
-"type": "string", "name": "fragmentName"}, {"default": false, "doc":
-"", "type": "boolean", "name": "properPlacement"}, {"default": false,
-"doc": "", "type": "boolean", "name": "duplicateFragment"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"numberReads"}, {"default": null, "doc": "", "type": ["null", "int"],
-"name": "fragmentLength"}, {"default": null, "doc": "", "type":
-["null", "int"], "name": "readNumber"}, {"default": false, "doc": "",
-"type": "boolean", "name": "failedVendorQualityChecks"}, {"default":
-null, "doc": "", "type": ["null", {"doc": "", "type": "record",
-"name": "LinearAlignment", "fields": [{"doc": "", "type": {"doc": "",
-"type": "record", "name": "Side", "fields": [{"doc": "", "type":
-{"doc": "", "type": "record", "name": "Position", "fields":
-[{"default": null, "doc": "", "type": ["null", "string"], "name":
-"sequenceId"}, {"default": null, "doc": "", "type": ["null",
-"string"], "name": "referenceName"}, {"doc": "", "type": "long",
-"name": "position"}]}, "name": "base"}, {"doc": "", "type":
-{"symbols": ["NEG_STRAND", "POS_STRAND"], "doc": "", "type": "enum",
-"name": "Strand"}, "name": "strand"}]}, "name": "position"},
+"type": "string", "name": "fragmentName"}, {"default": null, "doc":
+"", "type": ["null", "boolean"], "name": "properPlacement"},
+{"default": null, "doc": "", "type": ["null", "boolean"], "name":
+"duplicateFragment"}, {"default": null, "doc": "", "type": ["null",
+"int"], "name": "numberReads"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "fragmentLength"}, {"default": null, "doc":
+"", "type": ["null", "int"], "name": "readNumber"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name":
+"failedVendorQualityChecks"}, {"default": null, "doc": "", "type":
+["null", {"doc": "", "type": "record", "name": "LinearAlignment",
+"fields": [{"doc": "", "type": {"doc": "", "type": "record", "name":
+"Side", "fields": [{"doc": "", "type": {"doc": "", "type": "record",
+"name": "Position", "fields": [{"default": null, "doc": "", "type":
+["null", "string"], "name": "sequenceId"}, {"default": null, "doc":
+"", "type": ["null", "string"], "name": "referenceName"}, {"doc": "",
+"type": "long", "name": "position"}]}, "name": "base"}, {"doc": "",
+"type": {"symbols": ["NEG_STRAND", "POS_STRAND"], "doc": "", "type":
+"enum", "name": "Strand"}, "name": "strand"}]}, "name": "position"},
 {"default": null, "doc": "", "type": ["null", "int"], "name":
 "mappingQuality"}, {"default": [], "doc": "", "type": {"items":
 {"doc": "", "type": "record", "name": "CigarUnit", "fields": [{"doc":
@@ -3919,7 +4140,8 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
 "CigarOperation"}, "name": "operation"}, {"doc": "", "type": "long",
 "name": "operationLength"}, {"default": null, "doc": "", "type":
 ["null", "string"], "name": "referenceSequence"}]}, "type": "array"},
-"name": "cigar"}]}, {"doc": "", "type": "record", "name":
+"name": "cigar"}]}], "name": "alignment"}, {"default": null, "doc":
+"", "type": ["null", {"doc": "", "type": "record", "name":
 "GraphAlignment", "fields": [{"doc": "", "type": {"doc": "", "type":
 "record", "name": "Path", "fields": [{"default": [], "doc": "",
 "type": {"items": {"doc": "", "type": "record", "name": "Segment",
@@ -3928,14 +4150,15 @@ null, "doc": "", "type": ["null", {"doc": "", "type": "record",
 "segments"}]}, "name": "path"}, {"default": null, "doc": "", "type":
 ["null", "int"], "name": "mappingQuality"}, {"default": [], "doc": "",
 "type": {"items": "CigarUnit", "type": "array"}, "name": "cigar"}]}],
-"name": "alignment"}, {"default": false, "doc": "", "type": "boolean",
-"name": "secondaryAlignment"}, {"default": false, "doc": "", "type":
-"boolean", "name": "supplementaryAlignment"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "alignedSequence"},
-{"default": [], "doc": "", "type": {"items": "int", "type": "array"},
-"name": "alignedQuality"}, {"default": null, "doc": "", "type":
-["null", "Side"], "name": "nextMatePosition"}, {"default": {}, "doc":
-"", "type": {"values": {"items": "string", "type": "array"}, "type":
+"name": "graphAlignment"}, {"default": null, "doc": "", "type":
+["null", "boolean"], "name": "secondaryAlignment"}, {"default": null,
+"doc": "", "type": ["null", "boolean"], "name":
+"supplementaryAlignment"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "alignedSequence"}, {"default": [], "doc":
+"", "type": {"items": "int", "type": "array"}, "name":
+"alignedQuality"}, {"default": null, "doc": "", "type": ["null",
+"Side"], "name": "nextMatePosition"}, {"default": {}, "doc": "",
+"type": {"values": {"items": "string", "type": "array"}, "type":
 "map"}, "name": "info"}], "doc": ""}, "type": "array"}, "name":
 "alignments"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "nextPageToken"}], "doc": ""}
@@ -4164,16 +4387,16 @@ null, "doc": "", "type": ["null", "int"], "name": "ncbiTaxonId"},
         self.references = []
 
 
-class SearchSamplesRequest(SearchRequest):
+class SearchRnaQuantificationRequest(SearchRequest):
     """
-    This request maps to the body of `POST /samples/search` as JSON.
+    This request maps to the body of 'POST /rnaquantification/search'
+    as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchSamplesRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "individualIds"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"name"}, {"default": null, "doc": "", "type": ["null", "int"], "name":
+"SearchRnaQuantificationRequest", "fields": [{"default": null, "doc":
+"", "type": ["null", "string"], "name": "rnaQuantificationId"},
+{"default": null, "doc": "", "type": ["null", "int"], "name":
 "pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
 "name": "pageToken"}], "doc": ""}
 """
@@ -4192,11 +4415,97 @@ class SearchSamplesRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'individualIds', 'name', 'pageSize', 'pageToken'
+        'pageSize', 'pageToken', 'rnaQuantificationId'
     ]
 
     def __init__(self):
-        self.individualIds = []
+        self.pageSize = None
+        self.pageToken = None
+        self.rnaQuantificationId = None
+
+
+class SearchRnaQuantificationResponse(SearchResponse):
+    """
+    This is the response from 'POST /rnaquantification/search'
+    expressed as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchRnaQuantificationResponse", "fields": [{"default": [], "doc":
+"", "type": {"items": {"namespace": "org.ga4gh", "type": "record",
+"name": "RnaQuantification", "fields": [{"doc": "", "type": "string",
+"name": "id"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "description"}, {"doc": "", "type":
+"string", "name": "readGroupId"}, {"default": [], "doc": "", "type":
+{"items": "string", "type": "array"}, "name": "programIds"},
+{"default": [], "doc": "", "type": {"items": "string", "type":
+"array"}, "name": "annotationIds"}], "doc": ""}, "type": "array"},
+"name": "rnaQuantification"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "nextPageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "rnaQuantification"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'rnaQuantification': RnaQuantification,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'rnaQuantification': RnaQuantification,
+        }
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'nextPageToken', 'rnaQuantification'
+    ]
+
+    def __init__(self):
+        self.nextPageToken = None
+        self.rnaQuantification = []
+
+
+class SearchSamplesRequest(SearchRequest):
+    """
+    This request maps to the body of `POST /samples/search` as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchSamplesRequest", "fields": [{"doc": "", "type": "string",
+"name": "individualId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "individualId",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'individualId', 'name', 'pageSize', 'pageToken'
+    ]
+
+    def __init__(self):
+        self.individualId = None
         self.name = None
         self.pageSize = None
         self.pageToken = None
@@ -4217,25 +4526,24 @@ class SearchSamplesResponse(SearchResponse):
 "string", "type": "array"}, "name": "accessions"}, {"default": null,
 "doc": "", "type": ["null", "string"], "name": "name"}, {"default":
 null, "doc": "", "type": ["null", "string"], "name": "description"},
+{"doc": "", "type": "string", "name": "recordCreateTime"}, {"doc": "",
+"type": "string", "name": "recordUpdateTime"}, {"default": null,
+"doc": "", "type": ["null", "string"], "name": "samplingDate"},
 {"default": null, "doc": "", "type": ["null", "long"], "name":
-"created"}, {"default": null, "doc": "", "type": ["null", "long"],
-"name": "updated"}, {"default": null, "doc": "", "type": ["null",
-"long"], "name": "samplingDate"}, {"default": null, "doc": "", "type":
-["null", "long"], "name": "age"}, {"default": null, "doc": "", "type":
-["null", {"doc": "", "type": "record", "name": "OntologyTerm",
-"fields": [{"doc": "", "type": "string", "name": "ontologySource"},
-{"doc": "", "type": "string", "name": "id"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "name"}]}], "name":
-"cellType"}, {"default": null, "doc": "", "type": ["null",
-"OntologyTerm"], "name": "cellLine"}, {"default": null, "doc": "",
-"type": ["null", "string"], "name": "geocode"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "sampleType"},
+"ageAtSampling"}, {"default": null, "doc": "", "type": ["null",
+{"doc": "", "type": "record", "name": "OntologyTerm", "fields":
+[{"doc": "", "type": "string", "name": "ontologySource"}, {"doc": "",
+"type": "string", "name": "id"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "name"}]}], "name": "cellType"},
 {"default": null, "doc": "", "type": ["null", "OntologyTerm"], "name":
-"organismPart"}, {"default": {}, "doc": "", "type": {"values":
-{"items": "string", "type": "array"}, "type": "map"}, "name":
-"info"}], "doc": ""}, "type": "array"}, "name": "samples"},
-{"default": null, "doc": "", "type": ["null", "string"], "name":
-"nextPageToken"}], "doc": ""}
+"cellLine"}, {"default": null, "doc": "", "type": ["null", "string"],
+"name": "geocode"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "sampleType"}, {"default": null, "doc": "", "type":
+["null", "OntologyTerm"], "name": "organismPart"}, {"default": {},
+"doc": "", "type": {"values": {"items": "string", "type": "array"},
+"type": "map"}, "name": "info"}], "doc": ""}, "type": "array"},
+"name": "samples"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -4347,21 +4655,22 @@ class SearchSequencesResponse(SearchResponse):
         self.sequences = []
 
 
-class SearchVariantSetsRequest(SearchRequest):
+class SearchVariantSetSequencesRequest(SearchRequest):
     """
-    This request maps to the body of `POST /variantsets/search` as
-    JSON.
+    This request maps to the body of `POST
+    /variantsets/{id}/sequences/search` as JSON.
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchVariantSetsRequest", "fields": [{"default": [], "doc": "",
-"type": {"items": "string", "type": "array"}, "name": "datasetIds"},
-{"default": null, "doc": "", "type": ["null", "int"], "name":
-"pageSize"}, {"default": null, "doc": "", "type": ["null", "string"],
-"name": "pageToken"}], "doc": ""}
+"SearchVariantSetSequencesRequest", "fields": [{"doc": "", "type":
+"string", "name": "parentId"}, {"default": null, "doc": "", "type":
+["null", "int"], "name": "pageSize"}, {"default": null, "doc": "",
+"type": ["null", "string"], "name": "pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
-    requiredFields = set([])
+    requiredFields = set([
+        "parentId",
+    ])
 
     @classmethod
     def isEmbeddedType(cls, fieldName):
@@ -4375,11 +4684,99 @@ class SearchVariantSetsRequest(SearchRequest):
         return embeddedTypes[fieldName]
 
     __slots__ = [
-        'datasetIds', 'pageSize', 'pageToken'
+        'pageSize', 'pageToken', 'parentId'
     ]
 
     def __init__(self):
-        self.datasetIds = []
+        self.pageSize = None
+        self.pageToken = None
+        self.parentId = None
+
+
+class SearchVariantSetSequencesResponse(SearchResponse):
+    """
+    This is the response from `POST
+    /variantsets/{id}/sequences/search` expressed as JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchVariantSetSequencesResponse", "fields": [{"default": [], "doc":
+"", "type": {"items": {"namespace": "org.ga4gh.models", "type":
+"record", "name": "Segment", "fields": [{"doc": "", "type": {"doc":
+"", "type": "record", "name": "Side", "fields": [{"doc": "", "type":
+{"doc": "", "type": "record", "name": "Position", "fields":
+[{"default": null, "doc": "", "type": ["null", "string"], "name":
+"sequenceId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "referenceName"}, {"doc": "", "type": "long",
+"name": "position"}]}, "name": "base"}, {"doc": "", "type":
+{"symbols": ["NEG_STRAND", "POS_STRAND"], "doc": "", "type": "enum",
+"name": "Strand"}, "name": "strand"}]}, "name": "start"}, {"doc": "",
+"type": "long", "name": "length"}], "doc": ""}, "type": "array"},
+"name": "segments"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "nextPageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([])
+    _valueListName = "segments"
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'segments': Segment,
+        }
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {
+            'segments': Segment,
+        }
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'nextPageToken', 'segments'
+    ]
+
+    def __init__(self):
+        self.nextPageToken = None
+        self.segments = []
+
+
+class SearchVariantSetsRequest(SearchRequest):
+    """
+    This request maps to the body of `POST /variantsets/search` as
+    JSON.
+    """
+    _schemaSource = """
+{"namespace": "org.ga4gh.methods", "type": "record", "name":
+"SearchVariantSetsRequest", "fields": [{"doc": "", "type": "string",
+"name": "datasetId"}, {"default": null, "doc": "", "type": ["null",
+"int"], "name": "pageSize"}, {"default": null, "doc": "", "type":
+["null", "string"], "name": "pageToken"}], "doc": ""}
+"""
+    schema = avro.schema.parse(_schemaSource)
+    requiredFields = set([
+        "datasetId",
+    ])
+
+    @classmethod
+    def isEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+        return fieldName in embeddedTypes
+
+    @classmethod
+    def getEmbeddedType(cls, fieldName):
+        embeddedTypes = {}
+
+        return embeddedTypes[fieldName]
+
+    __slots__ = [
+        'datasetId', 'pageSize', 'pageToken'
+    ]
+
+    def __init__(self):
+        self.datasetId = None
         self.pageSize = None
         self.pageToken = None
 
@@ -4442,22 +4839,23 @@ class SearchVariantsRequest(SearchRequest):
     """
     _schemaSource = """
 {"namespace": "org.ga4gh.methods", "type": "record", "name":
-"SearchVariantsRequest", "fields": [{"default": [], "doc": "", "type":
-{"items": "string", "type": "array"}, "name": "variantSetIds"},
+"SearchVariantsRequest", "fields": [{"doc": "", "type": "string",
+"name": "variantSetId"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "name"}, {"default": null, "doc": "", "type":
+["null", {"items": "string", "type": "array"}], "name": "callSetIds"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"name"}, {"default": null, "doc": "", "type": ["null", {"items":
-"string", "type": "array"}], "name": "callSetIds"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "referenceName"},
+"referenceName"}, {"default": null, "doc": "", "type": ["null",
+"string"], "name": "referenceId"}, {"doc": "", "type": "long", "name":
+"start"}, {"doc": "", "type": "long", "name": "end"}, {"default":
+null, "doc": "", "type": ["null", "int"], "name": "pageSize"},
 {"default": null, "doc": "", "type": ["null", "string"], "name":
-"referenceId"}, {"doc": "", "type": "long", "name": "start"}, {"doc":
-"", "type": "long", "name": "end"}, {"default": null, "doc": "",
-"type": ["null", "int"], "name": "pageSize"}, {"default": null, "doc":
-"", "type": ["null", "string"], "name": "pageToken"}], "doc": ""}
+"pageToken"}], "doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([
         "end",
         "start",
+        "variantSetId",
     ])
 
     @classmethod
@@ -4473,7 +4871,7 @@ class SearchVariantsRequest(SearchRequest):
 
     __slots__ = [
         'callSetIds', 'end', 'name', 'pageSize', 'pageToken',
-        'referenceId', 'referenceName', 'start', 'variantSetIds'
+        'referenceId', 'referenceName', 'start', 'variantSetId'
     ]
 
     def __init__(self):
@@ -4485,7 +4883,7 @@ class SearchVariantsRequest(SearchRequest):
         self.referenceId = None
         self.referenceName = None
         self.start = None
-        self.variantSetIds = []
+        self.variantSetId = None
 
 
 class SearchVariantsResponse(SearchResponse):
@@ -4989,60 +5387,66 @@ class WiggleSet(ProtocolElement):
         self.id = None
 
 postMethods = \
-    [('/allelecalls/search',
-      SearchAlleleCallsRequest,
-      SearchVariantSetsResponse),
-     ('/alleles/search',
+    [('/alleles/search',
       SearchAllelesRequest,
-      SearchReadGroupSetsResponse),
+      SearchAllelesResponse),
      ('/analyses/search',
       SearchAnalysesRequest,
-      SearchSequencesResponse),
-     ('/calls/search',
-      SearchCallsRequest,
-      SearchSamplesResponse),
+      SearchAnalysesResponse),
      ('/callsets/search',
       SearchCallSetsRequest,
-      SearchExperimentsResponse),
+      SearchCallSetsResponse),
      ('/datasets/search',
       SearchDatasetsRequest,
-      SearchAlleleCallsResponse),
+      SearchDatasetsResponse),
      ('/experiments/search',
       SearchExperimentsRequest,
-      SearchAllelesResponse),
+      SearchExperimentsResponse),
+     ('/expressionlevel/search',
+      SearchExpressionLevelRequest,
+      SearchExpressionLevelResponse),
+     ('/featuregroup/search',
+      SearchFeatureGroupRequest,
+      SearchFeatureGroupResponse),
      ('/features/search',
       SearchFeaturesRequest,
-      SearchIndividualsResponse),
+      SearchFeaturesResponse),
      ('/individualgroups/search',
       SearchIndividualGroupsRequest,
-      SearchReadsResponse),
+      SearchIndividualGroupsResponse),
      ('/individuals/search',
       SearchIndividualsRequest,
-      SearchFeaturesResponse),
+      SearchIndividualsResponse),
      ('/joins/search',
       SearchJoinsRequest,
-      SearchIndividualGroupsResponse),
+      SearchJoinsResponse),
      ('/readgroupsets/search',
       SearchReadGroupSetsRequest,
-      SearchCallSetsResponse),
+      SearchReadGroupSetsResponse),
      ('/reads/search',
       SearchReadsRequest,
-      SearchJoinsResponse),
+      SearchReadsResponse),
      ('/references/search',
       SearchReferencesRequest,
-      SearchCallsResponse),
+      SearchReferencesResponse),
      ('/referencesets/search',
       SearchReferenceSetsRequest,
-      SearchAnalysesResponse),
+      SearchReferenceSetsResponse),
+     ('/rnaquantification/search',
+      SearchRnaQuantificationRequest,
+      SearchRnaQuantificationResponse),
      ('/samples/search',
       SearchSamplesRequest,
-      SearchReferenceSetsResponse),
+      SearchSamplesResponse),
      ('/sequences/search',
       SearchSequencesRequest,
-      SearchDatasetsResponse),
+      SearchSequencesResponse),
      ('/variants/search',
       SearchVariantsRequest,
-      SearchReferencesResponse),
+      SearchVariantsResponse),
      ('/variantsets/search',
       SearchVariantSetsRequest,
-      SearchVariantsResponse)]
+      SearchVariantSetsResponse),
+     ('/variantsetsequences/search',
+      SearchVariantSetSequencesRequest,
+      SearchVariantSetSequencesResponse)]
