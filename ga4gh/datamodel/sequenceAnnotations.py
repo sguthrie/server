@@ -42,7 +42,9 @@ class Attributes(dict):
 
 
 class Feature(object):
-    "Class representing a Feature annotations"
+    """
+    Class representing a Feature annotations
+    """
     def __init__(
             self, id, parentIds, featureSetId,
             referenceName, start, end, featureType, attributes):
@@ -73,7 +75,9 @@ class Feature(object):
 
 
 class FeatureSet(object):
-    "A set of sequence features annotations"
+    """
+    A set of sequence features annotations
+    """
     def __init__(
             self, id, datasetId, referenceSetId,
             name, sourceUri, attributes):

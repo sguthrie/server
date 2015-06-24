@@ -371,30 +371,35 @@ def searchVariants(version):
         version, flask.request, app.backend.searchVariants)
 
 
-@app.route('/<version>/features/<id>', methods=['GET'])
+@app.route('/<version>/features/<id>')
 def getFeature(version, id):
-    raise exceptions.PathNotFoundException()
+    return handleFlaskGetRequest(
+        version, id, flask.request, app.backend.getFeature)
 
 
-@app.route('/<version>/features/search', methods=['POST', 'OPTIONS'])
+@app.route('/<version>/features/search', methods=SEARCH_ENDPOINT_METHODS)
 def searchFeatures(version):
     return handleFlaskPostRequest(
         version, flask.request, app.backend.searchFeatures)
 
 
-@app.route('/<version>/rnaquantification/search', methods=['POST', 'OPTIONS'])
+@app.route(
+    '/<version>/rnaquantification/search',
+    methods=SEARCH_ENDPOINT_METHODS)
 def searchRNAQuantification(version):
     return handleFlaskPostRequest(
         version, flask.request, app.backend.searchRnaQuantification)
 
 
-@app.route('/<version>/expressionlevel/search', methods=['POST', 'OPTIONS'])
+@app.route(
+    '/<version>/expressionlevel/search', methods=SEARCH_ENDPOINT_METHODS)
 def searchExpressionLevel(version):
     return handleFlaskPostRequest(
         version, flask.request, app.backend.searchExpressionLevel)
 
 
-@app.route('/<version>/featuregroup/search', methods=['POST', 'OPTIONS'])
+@app.route(
+    '/<version>/featuregroup/search', methods=SEARCH_ENDPOINT_METHODS)
 def searchFeatureGroup(version):
     return handleFlaskPostRequest(
         version, flask.request, app.backend.searchFeatureGroup)

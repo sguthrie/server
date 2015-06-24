@@ -185,6 +185,8 @@ class AbstractBackend(object):
     This class provides methods for all of the GA4GH protocol end points.
     """
     def __init__(self):
+        self._featureIdMap = {}
+        self._featureIds = []
         self._referenceSetIdMap = {}
         self._referenceSetIds = []
         self._referenceIdMap = {}
@@ -218,6 +220,12 @@ class AbstractBackend(object):
         Returns a referenceSet with the given id_
         """
         return self.runGetRequest(self._referenceSetIdMap, id_)
+
+    def getFeature(self, id_):
+        """
+        Returns a feature with the given id_
+        """
+        return self.runGetRequest(self._featureIdMap, id_)
 
     def listReferenceBases(self, id_, requestArgs):
         # parse arguments
@@ -677,6 +685,10 @@ class SimulatedBackend(AbstractBackend):
             self._referenceIdMap[referenceId] = reference
         self._referenceSetIds = sorted(self._referenceSetIdMap.keys())
         self._referenceIds = sorted(self._referenceIdMap.keys())
+
+        # Features
+        self._featureIdMap = {}
+        self._featureIds = sorted(self._featureIdMap.keys())
 
 
 class FileSystemBackend(AbstractBackend):
