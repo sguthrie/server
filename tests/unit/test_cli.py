@@ -154,6 +154,18 @@ class TestClientArguments(unittest.TestCase):
         self.cliInput = """references-list-bases ID
         --start 1 --end 2"""
 
+    def testRnaQuantificationSearchArguments(self):
+        self.cliInput = """rnaquantification-search
+        --rnaQuantificationId ID"""
+
+    def testExpressionLevelSearchArguments(self):
+        self.cliInput = """expressionlevel-search
+        --expressionLevelId ID --rnaQuantificationId ID --featureGroupId ID"""
+
+    def testFeatureGroupSearchArguments(self):
+        self.cliInput = """featuregroup-search
+        --featureGroupId ID --threshold 0.0"""
+
 
 class StubArgumentParser(object):
     """

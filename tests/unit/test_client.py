@@ -106,6 +106,24 @@ class TestSearchMethodsCallRunRequest(unittest.TestCase):
             self.protocolRequest, "callsets",
             protocol.SearchCallSetsResponse)
 
+    def testSearchExpressionLevel(self):
+        self.httpClient.searchExpressionLevel(self.protocolRequest)
+        self.httpClient.runSearchRequest.assert_called_once_with(
+            self.protocolRequest, "expressionlevel",
+            protocol.SearchExpressionLevelResponse)
+
+    def testSearchRnaQuantification(self):
+        self.httpClient.searchRnaQuantification(self.protocolRequest)
+        self.httpClient.runSearchRequest.assert_called_once_with(
+            self.protocolRequest, "rnaquantification",
+            protocol.SearchRnaQuantificationResponse)
+
+    def testSearchFeatureGroup(self):
+        self.httpClient.searchFeatureGRoup(self.protocolRequest)
+        self.httpClient.runSearchRequest.assert_called_once_with(
+            self.protocolRequest, "featuregroup",
+            protocol.SearchFeatureGroupResponse)
+
     def testSearchReads(self):
         self.httpClient.searchReads(self.protocolRequest)
         self.httpClient.runSearchRequest.assert_called_once_with(

@@ -50,7 +50,7 @@ class BasicParser(object):
     Subclasses must define processHeader and getRowClass methods.
     """
     def __init__(self, stream):
-        self._stream = stream 
+        self._stream = stream
         self._objects = []
 
     def processHeader(self):
