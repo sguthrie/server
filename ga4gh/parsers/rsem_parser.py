@@ -16,7 +16,7 @@ class RsemRow(basic_parser.AbstractRowObject):
         ('target_id', str),
         ('length', int),
         ('eff_length', int),
-        ('est_counts', int),
+        ('est_counts', float),
         ('tpm', float),
     )
 

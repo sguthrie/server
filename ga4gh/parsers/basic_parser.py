@@ -6,6 +6,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
+class ParseException(Exception):
+    """
+    Something went wrong during parsing
+    """
+
+
 class AbstractRowObject(object):
     """
     An abstract base class of a row object for a file that a subclass
@@ -16,6 +22,10 @@ class AbstractRowObject(object):
     corresponding to the row position equal to the metainfo list index.
     """
     def __init__(self, values):
+        if len(values) != len(self.metainfo):
+            msg = "Row has wrong number of values; has {}, should have {}"
+            msgStr = msg.format(len(values), len(self.metainfo))
+            raise ParseException(msgStr)
         for position, value in enumerate(values):
             attrMeta = self.metainfo[position]
             attrName = attrMeta[0]
