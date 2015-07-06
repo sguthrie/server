@@ -6,13 +6,18 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import unittest
+import logging
+
+import gff3
 
 import ga4gh.parsers.cufflinks_parser as cufflinks_parser
 import ga4gh.parsers.rsem_parser as rsem_parser
 
 
 class TestCufflinksParser(unittest.TestCase):
-
+    """
+    Test the Cufflinks parser
+    """
     def testParser(self):
         # check that we can parse an example file without errors
         path = 'tests/data/cufflinks.txt'
@@ -39,7 +44,9 @@ class TestCufflinksParser(unittest.TestCase):
 
 
 class TestRsemParser(unittest.TestCase):
-
+    """
+    Test the Rsem parser
+    """
     def testParser(self):
         # check that we can parse an example file without errors
         path = 'tests/data/abundance.trimmed.txt'
@@ -55,3 +62,19 @@ class TestRsemParser(unittest.TestCase):
         self.assertEqual(row.eff_length, 162)
         self.assertEqual(row.est_counts, 1)
         self.assertAlmostEqual(row.tpm, 0.20407)
+
+
+class TestGff3Parser(unittest.TestCase):
+    """
+    Test the Gff3 parser
+    (not written by us)
+    """
+    def testParser(self):
+        path = 'tests/data/sequenceAnnotations/gencodeV21Set1.gff3'.encode(
+            'utf8')
+        # silence parsing errors
+        logging.getLogger("gff3.gff3").setLevel(logging.CRITICAL)
+        gff = gff3.Gff3(path)
+        line = gff.lines[7]  # arbitrary line
+        self.assertEqual(line['seqid'], 'chr1')
+        self.assertEqual(line['source'], 'HAVANA')
