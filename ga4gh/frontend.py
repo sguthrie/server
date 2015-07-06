@@ -549,7 +549,29 @@ def searchVariants(version):
         version, flask.request, app.backend.searchVariants)
 
 
-@DisplayedRoute('/<version>/datasets/search', postMethod=True)
+@app.route(
+    '/<version>/rnaquantification/search',
+    methods=SEARCH_ENDPOINT_METHODS)
+def searchRNAQuantification(version):
+    return handleFlaskPostRequest(
+        version, flask.request, app.backend.searchRnaQuantification)
+
+
+@app.route(
+    '/<version>/expressionlevel/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchExpressionLevel(version):
+    return handleFlaskPostRequest(
+        version, flask.request, app.backend.searchExpressionLevel)
+
+
+@app.route(
+    '/<version>/featuregroup/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchFeatureGroup(version):
+    return handleFlaskPostRequest(
+        version, flask.request, app.backend.searchFeatureGroup)
+
+
+@app.route('/<version>/datasets/search', methods=SEARCH_ENDPOINT_METHODS)
 def searchDatasets(version):
     return handleFlaskPostRequest(
         version, flask.request, app.backend.searchDatasets)

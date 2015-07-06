@@ -205,6 +205,13 @@ class ReferenceNotFoundException(ObjectNotFoundException):
                 referenceId, readGroupId, validRefs))
 
 
+class RnaQuantificationNotFoundException(NotFoundException):
+    def __init__(self, rnaQuantificationId):
+        self.message = (
+            "The requested RnaQuantification '{}' was not found".format(
+                rnaQuantificationId))
+
+
 class ObjectWithIdNotFoundException(ObjectNotFoundException):
     def __init__(self, objectId):
         self.message = "No object of this type exists with id '{}'".format(

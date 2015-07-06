@@ -176,6 +176,33 @@ class TestAbstractBackend(unittest.TestCase):
         self.assertTrue(
             isinstance(response, protocol.ListReferenceBasesResponse))
 
+    def testSearchRnaQuantification(self):
+        request = protocol.SearchRnaQuantificationRequest()
+        responseStr = self._backend.searchRnaQuantification(
+            request.toJsonString())
+        response = protocol.SearchRnaQuantificationResponse.fromJsonString(
+            responseStr)
+        self.assertTrue(
+            isinstance(response, protocol.SearchRnaQuantificationResponse))
+
+    def testSearchExpressionLevel(self):
+        request = protocol.SearchExpressionLevelRequest()
+        responseStr = self._backend.searchExpressionLevel(
+            request.toJsonString())
+        response = protocol.SearchExpressionLevelResponse.fromJsonString(
+            responseStr)
+        self.assertTrue(
+            isinstance(response, protocol.SearchExpressionLevelResponse))
+
+    def testSearchFeatureGroup(self):
+        request = protocol.SearchFeatureGroupRequest()
+        responseStr = self._backend.searchFeatureGroup(
+            request.toJsonString())
+        response = protocol.SearchFeatureGroupResponse.fromJsonString(
+            responseStr)
+        self.assertTrue(
+            isinstance(response, protocol.SearchFeatureGroupResponse))
+
 
 class TestFileSystemBackend(TestAbstractBackend):
     """

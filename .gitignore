@@ -104,6 +104,10 @@ docs/source/_build/
 # PyBuilder
 target/
 
+# Eclipse PyDev Project files
+.project
+.pydevproject
+
 # Pycharm
 .idea/
 

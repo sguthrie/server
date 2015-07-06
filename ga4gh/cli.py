@@ -125,6 +125,13 @@ class RequestFactory(object):
         request.referenceId = self.args.referenceId
         return request
 
+    def createSearchFeaturesRequest(self):
+        request = protocol.SearchFeaturesRequest()
+        setCommaSeparatedAttribute(request, self.args, 'featureSetIds')
+        setCommaSeparatedAttribute(request, self.args, 'features')
+        setCommaSeparatedAttribute(request, self.args, 'parentIds')
+        setCommaSeparatedAttribute(request, self.args, 'range')
+
     def createSearchDatasetsRequest(self):
         request = protocol.SearchDatasetsRequest()
         return request
@@ -133,6 +140,30 @@ class RequestFactory(object):
         request = protocol.ListReferenceBasesRequest()
         request.start = self.args.start
         request.end = self.args.end
+        return request
+
+    def createSearchRnaQuantificationRequest(self):
+        request = protocol.SearchRnaQuantificationRequest()
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'rnaQuantificationId')
+        request.rnaQuantificationId = self.args.rnaQuantificationId
+        return request
+
+    def createSearchExpressionLevelRequest(self):
+        request = protocol.SearchExpressionLevelRequest()
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'expressionLevelId')
+        request.expressionLevelId = self.args.expressionLevelId
+        request.featureGroupId = self.args.featureGroupId
+        request.rnaQuantificationId = self.args.rnaQuantificationId
+        return request
+
+    def createSearchFeatureGroupRequest(self):
+        request = protocol.SearchFeatureGroupRequest()
+        # allow only a single ID for now
+        # setCommaSeparatedAttribute(request, self.args, 'featureGroupId')
+        request.featureGroupId = self.args.featureGroupId
+        request.threshold = self.args.threshold
         return request
 
 
@@ -489,6 +520,94 @@ class SearchReadsRunner(AbstractSearchRunner):
         self._run(self._httpClient.searchReads, 'id')
 
 
+class SearchFeaturesRunner(AbstractSearchRunner):
+    """
+    Runner class for the features/search method
+    """
+    def __init__(self, args):
+        super(SearchFeaturesRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchFeaturesRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        self._run(self._httpClient.searchFeatures, 'id')
+
+
+class SearchRnaQuantificationRunner(AbstractSearchRunner):
+    """
+    Runner class for the rnaquantification/search method
+    """
+    def __init__(self, args):
+        super(SearchRnaQuantificationRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchRnaQuantificationRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        if self._minimalOutput:
+            self._run(self._httpClient.searchRnaQuantification, 'id')
+        else:
+            results = self._httpClient.searchRnaQuantification(self._request)
+            for result in results:
+                self.printRnaQuantification(result)
+
+    def printRnaQuantification(self, rnaQuant):
+        print(
+            rnaQuant.id, rnaQuant.description, rnaQuant.name,
+            rnaQuant.readGroupId, sep="\t", end="\t")
+        for annotation in rnaQuant.annotationIds:
+            print(annotation, sep=",", end="")
+        print()
+
+
+class SearchExpressionLevelRunner(AbstractSearchRunner):
+    """
+    Runner class for the ExpressionLevel/search method
+    """
+    def __init__(self, args):
+        super(SearchExpressionLevelRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchExpressionLevelRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        if self._minimalOutput:
+            self._run(self._httpClient.searchExpressionLevel, 'id')
+        else:
+            results = self._httpClient.searchExpressionLevel(self._request)
+            for result in results:
+                self.printExpressionLevel(result)
+
+    def printExpressionLevel(self, expression):
+        print(
+            expression.annotationId, expression.expression,
+            expression.featureGroupId, expression.id,
+            expression.isNormalized, expression.rawReadCount,
+            expression.score, expression.units, sep="\t", end="\t")
+        print()
+
+
+class SearchFeatureGroupRunner(AbstractSearchRunner):
+    """
+    Runner class for the featuregroup/search method
+    """
+    def __init__(self, args):
+        super(SearchFeatureGroupRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchFeatureGroupRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        if self._minimalOutput:
+            self._run(self._httpClient.searchFeatureGroup, 'id')
+        else:
+            results = self._httpClient.searchFeatureGroup(self._request)
+            for result in results:
+                self.printFeatureGroup(result)
+
+    def printFeatureGroup(self, featureGroup):
+        print(
+            featureGroup.analysisId, featureGroup.name, sep="\t", end="\t")
+        print()
+
+
 class SearchDatasetsRunner(AbstractSearchRunner):
     """
     Runner class for the datasets/search method
@@ -538,6 +657,17 @@ class GetReferenceRunner(AbstractGetRunner):
 
     def run(self):
         self._run(self._httpClient.getReference)
+
+
+class GetFeatureRunner(AbstractGetRunner):
+    """
+    Runner class for the feature/{id} method
+    """
+    def __init__(self, args):
+        super(GetFeatureRunner, self).__init__(args)
+
+    def run(self):
+        self._run(self._httpClient.getFeature)
 
 
 class BenchmarkRunner(SearchVariantsRunner):
@@ -813,12 +943,95 @@ def addReadsSearchParserArguments(parser):
         help="The referenceId to search over")
 
 
+def addFeaturesSearchParser(subparsers):
+    parser = subparsers.add_parser(
+        "features-search",
+        description="Search for features",
+        help="Search for features")
+    parser.set_defaults(runner=SearchFeaturesRunner)
+    addFeaturesSearchParserArguments(parser)
+    return parser
+
+
+def addFeaturesSearchParserArguments(parser):
+    parser.add_argument(
+        "--featureSetIds", default=None,
+        help="The featureSetIds to search over")
+    parser.add_argument(
+        "--features", default=None,
+        help="The features to search over")
+    parser.add_argument(
+        "--parentIds", default=None,
+        help="The parentIds to search over")
+    parser.add_argument(
+        "--range", default=None,
+        help="The range to search over")
+    addUrlArgument(parser)
+
+
+def addRnaQuantificationSearchParserArguments(subparsers):
+    parser = subparsers.add_parser(
+        "rnaquantification-search",
+        description="Search for rna quantification",
+        help="Search for rna quantification")
+    parser.set_defaults(runner=SearchRnaQuantificationRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
+        "--rnaQuantificationId", default=None,
+        help="The rnaQuantificationId to search over")
+
+
+def addExpressionLevelSearchParserArguments(subparsers):
+    parser = subparsers.add_parser(
+        "expressionlevel-search",
+        description="Search for feature expression",
+        help="Search for feature expression")
+    parser.set_defaults(runner=SearchExpressionLevelRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
+        "--expressionLevelId", default=None,
+        help="The expression level Id to search over")
+    parser.add_argument(
+        "--rnaQuantificationId", default=None,
+        help="The RNA Quantification Id to search over")
+    parser.add_argument(
+        "--featureGroupId", default=None,
+        help="The feature group Id to search over")
+
+
+def addFeatureGroupSearchParserArguments(subparsers):
+    parser = subparsers.add_parser(
+        "featuregroup-search",
+        description="Search for feature group",
+        help="Search for feature group")
+    parser.set_defaults(runner=SearchFeatureGroupRunner)
+    addUrlArgument(parser)
+    addPageSizeArgument(parser)
+    parser.add_argument(
+        "--featureGroupId", default=None,
+        help="The feature group Id to search over")
+    parser.add_argument(
+        "--threshold", default=None, type=float,
+        help="The minimum value for expression results to report.")
+
+
 def addReferenceSetsGetParser(subparsers):
     parser = subparsers.add_parser(
         "referencesets-get",
         description="Get a referenceset",
         help="Get a referenceset")
     parser.set_defaults(runner=GetReferenceSetRunner)
+    addGetArguments(parser)
+
+
+def addFeaturesGetParser(subparsers):
+    parser = subparsers.add_parser(
+        "features-get",
+        description="Get a feature",
+        help="Get a feature")
+    parser.set_defaults(runner=GetFeatureRunner)
     addGetArguments(parser)
 
 
@@ -857,10 +1070,15 @@ def client_main(parser=None):
     addReadGroupSetsSearchParser(subparsers)
     addCallsetsSearchParser(subparsers)
     addReadsSearchParser(subparsers)
+    addFeaturesSearchParser(subparsers)
     addDatasetsSearchParser(subparsers)
     addReferenceSetsGetParser(subparsers)
+    addFeaturesGetParser(subparsers)
     addReferencesGetParser(subparsers)
     addReferencesBasesListParser(subparsers)
+    addRnaQuantificationSearchParserArguments(subparsers)
+    addExpressionLevelSearchParserArguments(subparsers)
+    addFeatureGroupSearchParserArguments(subparsers)
 
     args = parser.parse_args()
     if "runner" not in args:

@@ -12,6 +12,7 @@ import ga4gh.protocol as protocol
 import ga4gh.datamodel as datamodel
 import ga4gh.datamodel.variants as variants
 import ga4gh.datamodel.reads as reads
+import ga4gh.datamodel.rna_quantification as rna_quantification
 
 
 class AbstractDataset(datamodel.DatamodelObject):
@@ -25,6 +26,8 @@ class AbstractDataset(datamodel.DatamodelObject):
         self._readGroupSetIdMap = {}
         self._readGroupIds = []
         self._readGroupIdMap = {}
+        self._rnaQuantificationIds = []
+        self._rnaQuantificationIdMap = {}
 
     def toProtocolElement(self):
         dataset = protocol.Dataset()
@@ -90,6 +93,24 @@ class AbstractDataset(datamodel.DatamodelObject):
         Returns the list of ReadGroupSets in this dataset
         """
         return self._readGroupSetIdMap.values()
+
+    def getRnaQuantificationIds(self):
+        """
+        Return a list of ids of rna quants that this dataset has
+        """
+        return self._rnaQuantificationIds
+
+    def getRnaQuantificationIdMap(self):
+        """
+        Return a map of the dataset's rna quant ids to rna quants
+        """
+        return self._rnaQuantificationIdMap
+
+    def getRnaQuantifications(self):
+        """
+        Returns the list of RnaQuantifications in this dataset
+        """
+        return self._rnaQuantificationIdMap.values()
 
 
 class SimulatedDataset(AbstractDataset):
@@ -158,3 +179,14 @@ class FileSystemDataset(AbstractDataset):
                     self._readGroupIdMap[readGroup.getId()] = readGroup
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
+
+        # Rna Quantification
+        rnaQuantDir = os.path.join(self._datasetDir, "rnaQuant")
+        for rnaQuantId in os.listdir(rnaQuantDir):
+            relativePath = os.path.join(rnaQuantDir, rnaQuantId)
+            if os.path.isdir(relativePath):
+                rnaQuantification = rna_quantification.RNASeqResult(
+                    rnaQuantId, relativePath)
+                self._rnaQuantificationIdMap[rnaQuantId] = rnaQuantification
+        self._rnaQuantificationIds = sorted(
+            self._rnaQuantificationIdMap.keys())
