@@ -6,6 +6,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import unittest
+import logging
 
 import ga4gh.frontend as frontend
 import ga4gh.protocol as protocol
@@ -31,6 +32,8 @@ class TestFrontend(unittest.TestCase):
         frontend.configure(
             baseConfig="TestConfig", extraConfig=config)
         cls.app = frontend.app.test_client()
+        # silence usually unhelpful CORS log
+        logging.getLogger('ga4gh.frontend.cors').setLevel(logging.CRITICAL)
 
     @classmethod
     def tearDownClass(cls):
@@ -60,9 +63,9 @@ class TestFrontend(unittest.TestCase):
         request.end = 1
         return self.sendPostRequest('/variants/search', request)
 
-    def sendVariantSetsSearch(self, datasetIds=[""]):
+    def sendVariantSetsSearch(self):
         request = protocol.SearchVariantSetsRequest()
-        request.datasetIds = datasetIds
+        request.datasetIds = ["simulatedDataset1"]
         return self.sendPostRequest('/variantsets/search', request)
 
     def sendCallSetsSearch(self):
@@ -79,6 +82,10 @@ class TestFrontend(unittest.TestCase):
         request = protocol.SearchReadsRequest()
         request.readGroupIds = readGroupIds
         return self.sendPostRequest('/reads/search', request)
+
+    def sendDatasetsSearch(self):
+        request = protocol.SearchDatasetsRequest()
+        return self.sendPostRequest('/datasets/search', request)
 
     def sendGetRequest(self, path):
         versionedPath = utils.applyVersion(path)
@@ -127,10 +134,16 @@ class TestFrontend(unittest.TestCase):
         return response
 
     def test404sReturnJson(self):
-        path = utils.applyVersion('/doesNotExist')
-        response = self.app.get(path)
-        protocol.GAException.fromJsonString(response.get_data())
-        self.assertEqual(404, response.status_code)
+        paths = [
+            '/doesNotExist',
+            utils.applyVersion('/doesNotExist'),
+            utils.applyVersion('/reads/sea'),
+            utils.applyVersion('/variantsets/id/doesNotExist'),
+        ]
+        for path in paths:
+            response = self.app.get(path)
+            protocol.GAException.fromJsonString(response.get_data())
+            self.assertEqual(404, response.status_code)
 
     def testCors(self):
         def assertHeaders(response):
@@ -145,6 +158,7 @@ class TestFrontend(unittest.TestCase):
         assertHeaders(self.sendReferenceSetsGet())
         assertHeaders(self.sendReferencesSearch())
         assertHeaders(self.sendReferenceBasesList())
+        assertHeaders(self.sendDatasetsSearch())
         # TODO: Test other methods as they are implemented
 
     def verifySearchRouting(self, path, getDefined=False):
@@ -173,13 +187,13 @@ class TestFrontend(unittest.TestCase):
         self.assertEqual(200, self.app.options(versionedPath).status_code)
 
     def testRouteReferences(self):
-        referenceId = "aReferenceSet:srsone"
+        referenceId = "referenceSet0:srs0"
         paths = ['/references/{}', '/references/{}/bases']
         for path in paths:
             path = path.format(referenceId)
             versionedPath = utils.applyVersion(path)
             self.assertEqual(200, self.app.get(versionedPath).status_code)
-        referenceSetId = "aReferenceSet"
+        referenceSetId = "referenceSet0"
         paths = ['/referencesets/{}']
         for path in paths:
             path = path.format(referenceSetId)
@@ -249,6 +263,13 @@ class TestFrontend(unittest.TestCase):
             responseData.alignments[1].id,
             "aReadGroupSet:one:simulated1")
 
+    def testDatasetsSearch(self):
+        response = self.sendDatasetsSearch()
+        responseData = protocol.SearchDatasetsResponse.fromJsonString(
+            response.data)
+        datasets = list(responseData.datasets)
+        self.assertEqual('simulatedDataset1', datasets[0].id)
+
     def testWrongVersion(self):
         path = '/v0.1.2/variantsets/search'
         self.assertEqual(404, self.app.options(path).status_code)
@@ -257,3 +278,45 @@ class TestFrontend(unittest.TestCase):
         path = '/{}/variantsets/search'.format(
             frontend.Version.currentString)
         self.assertEqual(200, self.app.options(path).status_code)
+
+    def testNotImplementedPaths(self):
+        pathsNotImplementedPost = [
+            '/genotypephenotype/search',
+            '/individuals/search',
+            '/samples/search',
+            '/experiments/search',
+            '/individualgroups/search',
+            '/analyses/search',
+            '/sequences/search',
+            '/joins/search',
+            '/subgraph/segments',
+            '/subgraph/joins',
+            '/features/search',
+            '/variantsets/<id>/sequences/search',
+            '/alleles/search',
+        ]
+        pathsNotImplementedGet = [
+            '/callsets/<id>',
+            '/alleles/<id>',
+            '/variants/<id>',
+            '/variantsets/<id>/sequences/<id>',
+            '/variantsets/<id>',
+            '/feature/<id>',
+            '/sequences/<id>/bases',
+            '/mode/<id>',
+            '/datasets/<id>',
+            '/readgroupsets/<id>',
+            '/readgroups/<id>',
+        ]
+
+        def runRequest(method, path):
+            requestPath = path.replace('<id>', 'someId')
+            versionedPath = utils.applyVersion(requestPath)
+            response = method(versionedPath)
+            protocol.GAException.fromJsonString(response.get_data())
+            self.assertEqual(response.status_code, 501)
+
+        for path in pathsNotImplementedGet:
+            runRequest(self.app.get, path)
+        for path in pathsNotImplementedPost:
+            runRequest(self.app.post, path)

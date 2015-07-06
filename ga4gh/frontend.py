@@ -13,6 +13,7 @@ import datetime
 import flask
 import flask.ext.cors as cors
 import humanize
+import werkzeug
 
 import ga4gh
 import ga4gh.backend as backend
@@ -24,6 +25,32 @@ SEARCH_ENDPOINT_METHODS = ['POST', 'OPTIONS']
 
 
 app = flask.Flask(__name__)
+
+
+class NoConverter(werkzeug.routing.BaseConverter):
+    """
+    A converter that allows the routing matching algorithm to not
+    match on certain literal terms
+
+    This is needed because if there are e.g. two routes:
+
+    /<version>/callsets/search
+    /<version>/callsets/<id>
+
+    A request for /someVersion/callsets/search will get routed to
+    the second, which is not what we want.
+    """
+    def __init__(self, map, *items):
+        werkzeug.routing.BaseConverter.__init__(self, map)
+        self.items = items
+
+    def to_python(self, value):
+        if value in self.items:
+            raise werkzeug.routing.ValidationError()
+        return value
+
+
+app.url_map.converters['no'] = NoConverter
 
 
 class Version(object):
@@ -88,7 +115,8 @@ class ServerStatus(object):
         """
         # TODO what other config keys are appropriate to export here?
         keys = [
-            'DEBUG', 'REQUEST_VALIDATION', 'RESPONSE_VALIDATION'
+            'DEBUG', 'REQUEST_VALIDATION', 'RESPONSE_VALIDATION',
+            'DEFAULT_PAGE_SIZE', 'MAX_RESPONSE_LENGTH',
         ]
         return [(k, app.config[k]) for k in keys]
 
@@ -138,17 +166,23 @@ class ServerStatus(object):
         urls.sort()
         return urls
 
-    def getVariantSets(self):
+    def getDatasetIds(self):
         """
-        Returns the list of variant sets for this server.
+        Returns the list of datasetIds for this backend
         """
-        return app.backend.getDataset().getVariantSets()
+        return app.backend.getDatasetIds()
 
-    def getReadGroupSets(self):
+    def getVariantSets(self, datasetId):
         """
-        Returns the list of ReadGroupSets for this server.
+        Returns the list of variant sets for the dataset
         """
-        return app.backend.getDataset().getReadGroupSets()
+        return app.backend.getDataset(datasetId).getVariantSets()
+
+    def getReadGroupSets(self, datasetId):
+        """
+        Returns the list of ReadGroupSets for the dataset
+        """
+        return app.backend.getDataset(datasetId).getReadGroupSets()
 
     def getReferenceSets(self):
         """
@@ -183,8 +217,15 @@ def configure(configFile=None, baseConfig="ProductionConfig", extraConfig={}):
         numCalls = app.config["SIMULATED_BACKEND_NUM_CALLS"]
         variantDensity = app.config["SIMULATED_BACKEND_VARIANT_DENSITY"]
         numVariantSets = app.config["SIMULATED_BACKEND_NUM_VARIANT_SETS"]
+        numReferenceSets = app.config[
+            "SIMULATED_BACKEND_NUM_REFERENCE_SETS"]
+        numReferencesPerReferenceSet = app.config[
+            "SIMULATED_BACKEND_NUM_REFERENCES_PER_REFERENCE_SET"]
+        numAlignments = app.config[
+            "SIMULATED_BACKEND_NUM_ALIGNMENTS_PER_READ_GROUP"]
         theBackend = backend.SimulatedBackend(
-            randomSeed, numCalls, variantDensity, numVariantSets)
+            randomSeed, numCalls, variantDensity, numVariantSets,
+            numReferenceSets, numReferencesPerReferenceSet, numAlignments)
     elif dataSource == "__EMPTY__":
         theBackend = backend.EmptyBackend()
     else:
@@ -308,7 +349,14 @@ def index():
 
 @app.route('/<version>')
 def indexRedirect(version):
-    return index()
+    try:
+        isCurrentVersion = Version.isCurrentVersion(version)
+    except TypeError:  # malformed "version string"
+        raise exceptions.PathNotFoundException()
+    if isCurrentVersion:
+        return index()
+    else:
+        raise exceptions.PathNotFoundException()
 
 
 @app.route('/<version>/references/<id>')
@@ -405,8 +453,135 @@ def searchFeatureGroup(version):
         version, flask.request, app.backend.searchFeatureGroup)
 
 
+@app.route('/<version>/datasets/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchDatasets(version):
+    return handleFlaskPostRequest(
+        version, flask.request, app.backend.searchDatasets)
+
+
+# The below paths have not yet been implemented
+
+
+@app.route('/<version>/callsets/<no(search):id>')
+def getCallset(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/alleles/<no(search):id>')
+def getAllele(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/variants/<no(search):id>')
+def getVariant(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/variantsets/<vsid>/sequences/<sid>')
+def getVariantSetSequence(version, vsid, sid):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/variantsets/<no(search):id>')
+def getVariantSet(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/sequences/<id>/bases')
+def getSequenceBases(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/mode/<mode>')
+def getMode(version, mode):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/datasets/<no(search):id>')
+def getDataset(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/readgroupsets/<no(search):id>')
+def getReadGroupSet(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/readgroups/<id>')
+def getReadGroup(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route(
+    '/<version>/genotypephenotype/search',
+    methods=SEARCH_ENDPOINT_METHODS)
+def searchGenotypePephenotype(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/individuals/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchIndividuals(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/samples/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchSamples(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/experiments/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchExperiments(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route(
+    '/<version>/individualgroups/search',
+    methods=SEARCH_ENDPOINT_METHODS)
+def searchIndividualGroups(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/analyses/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchAnalyses(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/sequences/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchSequences(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/joins/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchJoins(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/subgraph/segments', methods=SEARCH_ENDPOINT_METHODS)
+def subgraphSegments(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/subgraph/joins', methods=SEARCH_ENDPOINT_METHODS)
+def subgraphJoins(version):
+    raise exceptions.NotImplementedException()
+
+
+@app.route(
+    '/<version>/variantsets/<id>/sequences/search',
+    methods=SEARCH_ENDPOINT_METHODS)
+def searchVariantSetSequences(version, id):
+    raise exceptions.NotImplementedException()
+
+
+@app.route('/<version>/alleles/search', methods=SEARCH_ENDPOINT_METHODS)
+def searchAlleles(version):
+    raise exceptions.NotImplementedException()
+
+
 # The below methods ensure that JSON is returned for various errors
 # instead of the default, html
+
+
 @app.errorhandler(404)
 def pathNotFoundHandler(errorString):
     return handleException(exceptions.PathNotFoundException())

@@ -290,3 +290,10 @@ class HttpClient(object):
         return self.runSearchRequest(
             protocolRequest, "featuregroup",
             protocol.SearchFeatureGroupResponse)
+
+    def searchDatasets(self, protocolRequest):
+        """
+        Returns an iterator over the Datasets from the server
+        """
+        return self.runSearchRequest(
+            protocolRequest, "datasets", protocol.SearchDatasetsResponse)

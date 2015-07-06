@@ -133,6 +133,9 @@ class RequestFactory(object):
         setCommaSeparatedAttribute(request, self.args, 'features')
         setCommaSeparatedAttribute(request, self.args, 'parentIds')
         setCommaSeparatedAttribute(request, self.args, 'range')
+
+    def createSearchDatasetsRequest(self):
+        request = protocol.SearchDatasetsRequest()
         return request
 
     def createListReferenceBasesRequest(self):
@@ -391,9 +394,19 @@ class SearchVariantsRunner(AbstractSearchRunner):
         # if no variantSets have been specified, send a request to
         # the server to grab all variantSets and then continue
         if args.variantSetIds is None:
-            variantSetsRequest = protocol.SearchVariantSetsRequest()
-            response = self._httpClient.searchVariantSets(variantSetsRequest)
-            variantSetIds = [variantSet.id for variantSet in response]
+            datasetsRequest = protocol.SearchDatasetsRequest()
+            datasetsResponse = self._httpClient.searchDatasets(
+                datasetsRequest)
+            datasetIds = [dataset.id for dataset in datasetsResponse]
+            variantSetIds = []
+            for datasetId in datasetIds:
+                variantSetsRequest = protocol.SearchVariantSetsRequest()
+                variantSetsRequest.datasetIds = [datasetId]
+                response = self._httpClient.searchVariantSets(
+                    variantSetsRequest)
+                datasetVariantSetIds = [
+                    variantSet.id for variantSet in response]
+                variantSetIds.extend(datasetVariantSetIds)
             request.variantSetIds = variantSetIds
         else:
             setCommaSeparatedAttribute(request, args, 'variantSetIds')
@@ -597,6 +610,19 @@ class SearchFeatureGroupRunner(AbstractSearchRunner):
         print(
             featureGroup.analysisId, featureGroup.name, sep="\t", end="\t")
         print()
+
+
+class SearchDatasetsRunner(AbstractSearchRunner):
+    """
+    Runner class for the datasets/search method
+    """
+    def __init__(self, args):
+        super(SearchDatasetsRunner, self).__init__(args)
+        request = RequestFactory(args).createSearchDatasetsRequest()
+        self._setRequest(request, args)
+
+    def run(self):
+        self._run(self._httpClient.searchDatasets, 'id')
 
 
 class ListReferenceBasesRunner(AbstractSearchRunner):
@@ -882,6 +908,16 @@ def addReadsSearchParser(subparsers):
     return parser
 
 
+def addDatasetsSearchParser(subparsers):
+    parser = subparsers.add_parser(
+        "datasets-search",
+        description="Search for datasets",
+        help="Search for datasets")
+    parser.set_defaults(runner=SearchDatasetsRunner)
+    addUrlArgument(parser)
+    return parser
+
+
 def addReadsSearchParserArguments(parser):
     addUrlArgument(parser)
     addPageSizeArgument(parser)
@@ -1026,6 +1062,7 @@ def client_main(parser=None):
     addCallsetsSearchParser(subparsers)
     addReadsSearchParser(subparsers)
     addFeaturesSearchParser(subparsers)
+    addDatasetsSearchParser(subparsers)
     addReferenceSetsGetParser(subparsers)
     addFeaturesGetParser(subparsers)
     addReferencesGetParser(subparsers)

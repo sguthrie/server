@@ -11,7 +11,7 @@ from protocol import SearchResponse
 
 import avro.schema
 
-version = '0.6.32eedec4'
+version = '0.6.de8a2b20'
 
 
 class Allele(ProtocolElement):
@@ -3344,9 +3344,10 @@ class SearchExpressionLevelRequest(SearchRequest):
 {"default": null, "doc": "", "type": ["null", "string"], "name":
 "featureGroupId"}, {"default": null, "doc": "", "type": ["null",
 "string"], "name": "rnaQuantificationId"}, {"default": null, "doc":
-"", "type": ["null", "int"], "name": "pageSize"}, {"default": null,
-"doc": "", "type": ["null", "string"], "name": "pageToken"}], "doc":
-""}
+"", "type": ["null", "float"], "name": "threshold"}, {"default": null,
+"doc": "", "type": ["null", "int"], "name": "pageSize"}, {"default":
+null, "doc": "", "type": ["null", "string"], "name": "pageToken"}],
+"doc": ""}
 """
     schema = avro.schema.parse(_schemaSource)
     requiredFields = set([])
@@ -3364,7 +3365,7 @@ class SearchExpressionLevelRequest(SearchRequest):
 
     __slots__ = [
         'expressionLevelId', 'featureGroupId', 'pageSize',
-        'pageToken', 'rnaQuantificationId'
+        'pageToken', 'rnaQuantificationId', 'threshold'
     ]
 
     def __init__(self):
@@ -3373,6 +3374,7 @@ class SearchExpressionLevelRequest(SearchRequest):
         self.pageSize = None
         self.pageToken = None
         self.rnaQuantificationId = None
+        self.threshold = None
 
 
 class SearchExpressionLevelResponse(SearchResponse):

@@ -102,10 +102,10 @@ class SimulatedReadGroupSet(AbstractReadGroupSet):
     """
     A simulated read group set
     """
-    def __init__(self, id_):
+    def __init__(self, id_, numAlignments=2):
         super(SimulatedReadGroupSet, self).__init__(id_)
         readGroupId = "{}:one".format(id_)
-        readGroup = SimulatedReadGroup(readGroupId)
+        readGroup = SimulatedReadGroup(readGroupId, numAlignments)
         self._readGroups.append(readGroup)
 
 
@@ -172,11 +172,12 @@ class SimulatedReadGroup(AbstractReadGroup):
     """
     A simulated readgroup
     """
-    def __init__(self, id_):
+    def __init__(self, id_, numAlignments=2):
         super(SimulatedReadGroup, self).__init__(id_)
+        self._numAlignments = numAlignments
 
     def getReadAlignments(self, referenceId=None, start=None, end=None):
-        for i in range(2):
+        for i in range(self._numAlignments):
             alignment = self._createReadAlignment(i)
             yield alignment
 
@@ -235,6 +236,7 @@ class HtslibReadGroup(datamodel.PysamDatamodelMixin, AbstractReadGroup):
         # including unmapped reads.
         referenceName = ""
         if referenceId is not None:
+            self.sanitizeGetRName(referenceId)
             referenceName = self._samFile.getrname(referenceId)
         referenceName, start, end = self.sanitizeAlignmentFileFetch(
             referenceName, start, end)
@@ -255,6 +257,7 @@ class HtslibReadGroup(datamodel.PysamDatamodelMixin, AbstractReadGroup):
         ret.alignment = protocol.LinearAlignment()
         ret.alignment.mappingQuality = read.mapping_quality
         ret.alignment.position = protocol.Position()
+        self.sanitizeGetRName(read.reference_id)
         ret.alignment.position.referenceName = self._samFile.getrname(
             read.reference_id)
         ret.alignment.position.position = read.reference_start
@@ -278,6 +281,7 @@ class HtslibReadGroup(datamodel.PysamDatamodelMixin, AbstractReadGroup):
         ret.nextMatePosition = None
         if read.next_reference_id != -1:
             ret.nextMatePosition = protocol.Position()
+            self.sanitizeGetRName(read.next_reference_id)
             ret.nextMatePosition.referenceName = self._samFile.getrname(
                 read.next_reference_id)
             ret.nextMatePosition.position = read.next_reference_start

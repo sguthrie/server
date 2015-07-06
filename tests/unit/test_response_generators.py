@@ -37,8 +37,9 @@ class TestVariantsGenerator(unittest.TestCase):
     """
     def setUp(self):
         self.request = protocol.SearchVariantsRequest()
-        self.backend = backend.AbstractBackend()
+        self.backend = backend.SimulatedBackend()
         self.variantSetId = "variantSetId"
+        self.datasetId = self.backend.getDatasetIds()[0]
 
     def testNoVariantSetsNotSupported(self):
         # a request for no variant sets should throw an exception
@@ -88,7 +89,7 @@ class TestVariantsGenerator(unittest.TestCase):
 
     def _initVariantSet(self, numVariants):
         variantSet = MockVariantSet(self.variantSetId, numVariants)
-        self.backend.getDataset()._variantSetIdMap = {
+        self.backend.getDataset(self.datasetId)._variantSetIdMap = {
             self.variantSetId: variantSet}
         self.request.variantSetIds = [self.variantSetId]
 
@@ -120,8 +121,9 @@ class TestReadsGenerator(unittest.TestCase):
     """
     def setUp(self):
         self.request = protocol.SearchReadsRequest()
-        self.backend = backend.AbstractBackend()
+        self.backend = backend.SimulatedBackend()
         self.readGroupId = "readGroupId"
+        self.datasetId = self.backend.getDatasetIds()[0]
 
     def testNoReadGroupsNotSupported(self):
         # a request for no read groups should throw an exception
@@ -171,7 +173,7 @@ class TestReadsGenerator(unittest.TestCase):
 
     def _initReadGroup(self, numAlignments):
         readGroup = MockReadGroup(self.readGroupId, numAlignments)
-        self.backend.getDataset()._readGroupIdMap = {
+        self.backend.getDataset(self.datasetId)._readGroupIdMap = {
             self.readGroupId: readGroup}
         self.request.readGroupIds = [self.readGroupId]
 
@@ -212,126 +214,3 @@ class TestReadsIntervalIteratorClassMethods(unittest.TestCase):
         self.assertEqual(
             self.intervalIterator._getStart(self.read) +
             len(self.read.alignedSequence), result)
-
-
-class DummyReadsIntervalIterator(backend.ReadsIntervalIterator):
-    """
-    A reads interval iterator that doesn't call most initialization methods
-    """
-    def __init__(self, request, containerIdMap, startPosition,
-                 equalPositionsToSkip, iterator):
-        self._badPageTokenExceptionMessage = (
-            "Inconsistent page token provided")
-        self._request = request
-        self._containerIdMap = containerIdMap
-        self._startPosition = startPosition
-        self._equalPositionsToSkip = equalPositionsToSkip
-        self._iterator = iterator
-        self._generator = self._internalIterator()
-
-
-class TestReadsIntervalIterator(unittest.TestCase):
-    """
-    Test the reads interval iterator
-    """
-    def _createIntervalIterator(self, iterator=None):
-        self.intervalIterator = DummyReadsIntervalIterator(
-            self.request, self.containerIdMap, self.startPosition,
-            self.equalPositionsToSkip, iterator)
-
-    def setUp(self):
-        self.request = protocol.SearchReadsRequest()
-        self.request.start = 3
-        self.request.pageToken = "notNone"
-        self.backend = backend.AbstractBackend()
-        self.alignmentPosition = 5
-        self.startPosition = 1
-        self.equalPositionsToSkip = 1
-        self.containerIdMap = {}
-
-    def testGetIntervalCounters(self):
-        self._createIntervalIterator()
-
-        # with pageToken == None
-        startPos = 9
-        self.request.start = startPos
-        self.request.pageToken = None
-        startPosition, equalPositionsToSkip = \
-            self.intervalIterator._getIntervalCounters()
-        self.assertEqual(startPosition, startPos)
-        self.assertEqual(equalPositionsToSkip, 0)
-
-        # with pageToken != None
-        self.request.pageToken = "1:2"
-        startPosition, equalPositionsToSkip = \
-            self.intervalIterator._getIntervalCounters()
-        self.assertEqual(startPosition, 1)
-        self.assertEqual(equalPositionsToSkip, 2)
-
-    def testPositionIterator(self):
-        sequence = 'abcdefghijklmnop'
-
-        def getIterator():
-            # skipped because position < startPosition
-            yield generateReadAlignment(0)
-            # skipped because endPosition < request.start
-            yield generateReadAlignment(1, 'a')
-            # skipped because equalPositionsSkipped
-            yield generateReadAlignment(1, 'abcdefg')
-            # this one should be returned
-            yield generateReadAlignment(1, sequence)
-        self._createIntervalIterator(getIterator())
-        readAlignment, _ = next(self.intervalIterator)
-        self.assertEqual(readAlignment.alignedSequence, sequence)
-
-    def testPositionIteratorException1(self):
-        # test that the first exception in _positionIterator is hit
-        def getIterator():
-            # skipped because position < startPosition
-            yield generateReadAlignment(0)
-            # error because no more alignments
-        self._assertBadPageTokenExceptionRaised(getIterator())
-
-    def testPositionIteratorException2(self):
-        # test that the second exception in _positionIterator is hit
-        def getIterator():
-            # error because position != startPosition
-            yield generateReadAlignment(2)
-        self._assertBadPageTokenExceptionRaised(getIterator())
-
-    def testPositionIteratorException3(self):
-        # test that the third exception in _positionIterator is hit
-        def getIterator():
-            # skipped because equalPositionsToSkip == 1
-            yield generateReadAlignment(1)
-            # error because no more alignments
-        self._assertBadPageTokenExceptionRaised(getIterator())
-
-    def _assertBadPageTokenExceptionRaised(self, iterator):
-        self._createIntervalIterator(iterator)
-        with self.assertRaises(exceptions.BadPageTokenException):
-            next(self.intervalIterator)
-
-    def testYieldObjects(self):
-        firstAlignedSequence = 'abc'
-        secondAlignedSequence = 'def'
-
-        def getIterator():
-            yield generateReadAlignment(2, firstAlignedSequence)
-            yield generateReadAlignment(2, secondAlignedSequence)
-
-        iterator = getIterator()
-        equalPositionsToSkip = 0
-        startPosition = 0
-        self.intervalIterator = DummyReadsIntervalIterator(
-            self.request, self.containerIdMap, startPosition,
-            equalPositionsToSkip, iterator)
-        readAlignment, nextPageToken = next(self.intervalIterator)
-        self.assertEqual(
-            firstAlignedSequence, readAlignment.alignedSequence)
-        self.assertEqual(nextPageToken, "2:1")
-        readAlignment, nextPageToken = next(self.intervalIterator)
-        self.assertEqual(
-            secondAlignedSequence, readAlignment.alignedSequence)
-        self.assertIsNone(nextPageToken)
-        self.assertIsNone(next(self.intervalIterator, None))

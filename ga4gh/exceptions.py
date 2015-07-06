@@ -68,8 +68,9 @@ class BaseServerException(Exception):
         """
         # We use the CRC32 digest of the class name as a unique code.
         # We follow the recommendation of the Python docs to ensure
-        # that this value is signed 32 bit integer.
-        code = zlib.crc32(cls.__name__) & 0xffffffff
+        # that this value is signed 32 bit integer, and then mod it
+        # to ensure non-negativity
+        code = (zlib.crc32(cls.__name__) & 0xffffffff) % 2**31
         return code
 
 
@@ -151,6 +152,13 @@ class DatamodelValidationException(BadRequestException):
     """
 
 
+class NotExactlyOneDatasetException(BadRequestException):
+    def __init__(self, requestedDatasetIds):
+        msg = "Not exactly one dataset requested: {}".format(
+            requestedDatasetIds)
+        super(NotExactlyOneDatasetException, self).__init__(msg)
+
+
 class NotFoundException(RuntimeException):
     """
     The superclass of all exceptions in which some resource was not
@@ -212,8 +220,11 @@ class NotImplementedException(RuntimeException):
     """
     httpStatus = 501
 
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, message=None):
+        if message is None:
+            self.message = "Path not implemented"
+        else:
+            self.message = message
 
 
 class CallSetNotInVariantSetException(NotFoundException):
@@ -230,12 +241,6 @@ class DataException(BaseServerException):
     Exceptions thrown during the server startup, and processing faulty VCFs
     """
     message = "Faulty data found or data file is missing."
-
-
-class NotExactlyOneDatasetException(DataException):
-    def __init__(self, datasetDirs):
-        msg = "Not exactly one dataset found: {}".format(datasetDirs)
-        super(NotExactlyOneDatasetException, self).__init__(msg)
 
 
 class FileOpenFailedException(DataException):
