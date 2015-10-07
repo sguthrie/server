@@ -1,0 +1,10 @@
+#!/home/sguthrie/git/sguthrie/server/ga4gh-env/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'ga4gh==0.1.2','console_scripts','ga2vcf'
+__requires__ = 'ga4gh==0.1.2'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('ga4gh==0.1.2', 'console_scripts', 'ga2vcf')()
+    )

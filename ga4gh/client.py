@@ -194,12 +194,31 @@ class HttpClient(object):
         return self._doRequest(
             'POST', fullUrl, protocolResponseClass, httpData=data)
 
+    #####################################################
+    #Reference Set Methods
+    def searchReferenceSets(self, protocolRequest):
+        """
+        Returns an iterator over the ReferenceSets from the server.
+        """
+        return self.runSearchRequest(
+            protocolRequest, "referencesets",
+            protocol.SearchReferenceSetsResponse)
+
     def getReferenceSet(self, id_):
         """
         Returns a referenceSet from the server
         """
         return self.runGetRequest(
             "referencesets", protocol.ReferenceSet, id_)
+
+    #####################################################
+    #References Methods
+    def searchReferences(self, protocolRequest):
+        """
+        Returns an iterator over the References from the server
+        """
+        return self.runSearchRequest(
+            protocolRequest, "references", protocol.SearchReferencesResponse)
 
     def getReference(self, id_):
         """
@@ -216,13 +235,8 @@ class HttpClient(object):
             protocolRequest, "references/{id}/bases",
             protocol.ListReferenceBasesResponse, id_)
 
-    def searchVariants(self, protocolRequest):
-        """
-        Returns an iterator over the Variants from the server
-        """
-        return self.runSearchRequest(
-            protocolRequest, "variants", protocol.SearchVariantsResponse)
-
+    #####################################################
+    #Variant Sets Methods
     def searchVariantSets(self, protocolRequest):
         """
         Returns an iterator over the VariantSets from the server.
@@ -230,21 +244,15 @@ class HttpClient(object):
         return self.runSearchRequest(
             protocolRequest, "variantsets",
             protocol.SearchVariantSetsResponse)
-
-    def searchReferenceSets(self, protocolRequest):
+    #####################################################
+    def searchVariants(self, protocolRequest):
         """
-        Returns an iterator over the ReferenceSets from the server.
-        """
-        return self.runSearchRequest(
-            protocolRequest, "referencesets",
-            protocol.SearchReferenceSetsResponse)
-
-    def searchReferences(self, protocolRequest):
-        """
-        Returns an iterator over the References from the server
+        Returns an iterator over the Variants from the server
         """
         return self.runSearchRequest(
-            protocolRequest, "references", protocol.SearchReferencesResponse)
+            protocolRequest, "variants", protocol.SearchVariantsResponse)
+
+
 
     def searchSequences(self, protocolRequest):
         """

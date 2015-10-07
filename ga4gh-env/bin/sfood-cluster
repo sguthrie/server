@@ -1,0 +1,7 @@
+#!/home/sguthrie/git/sguthrie/server/ga4gh-env/bin/python
+# This file is part of the snakefood package.  
+# See http://furius.ca/snakefood for license and details.
+
+from snakefood.cluster import main
+main()
+

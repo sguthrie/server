@@ -361,6 +361,7 @@ class AbstractBackend(object):
         Returns a generator over the (readGroupSet, nextPageToken) pairs
         defined by the specified request.
         """
+        print("readGroupSetsGenerator called")
         return self._topLevelObjectGenerator(
             request, self._readGroupSetIdMap, self._readGroupSetIds)
 
@@ -369,6 +370,7 @@ class AbstractBackend(object):
         Returns a generator over the (variantSet, nextPageToken) pairs defined
         by the specified request.
         """
+        print("variantSetsGenerator called")
         return self._topLevelObjectGenerator(
             request, self._variantSetIdMap, self._variantSetIds)
 
@@ -377,15 +379,17 @@ class AbstractBackend(object):
         Returns a generator over the (read, nextPageToken) pairs defined
         by the specified request
         """
+        print("readsGenerator called")
         intervalIterator = ReadsIntervalIterator(
             request, self._readGroupIdMap)
         return intervalIterator
 
-    def variantsGenerator(self, request):
+    def variantsGenerator(self, request, **uselesskwargs):
         """
         Returns a generator over the (variant, nextPageToken) pairs defined
         by the specified request.
         """
+        print("variantsGenerator called")
         intervalIterator = VariantsIntervalIterator(
             request, self._variantSetIdMap)
         return intervalIterator
@@ -395,6 +399,7 @@ class AbstractBackend(object):
         Returns a generator over the (callSet, nextPageToken) pairs defined
         by the specified request.
         """
+        print("callSetsGenerator called")
         if request.name is not None:
             raise exceptions.NotImplementedException(
                 "Searching over names is not supported")
@@ -468,7 +473,6 @@ class EmptyBackend(AbstractBackend):
     A GA4GH backend that contains no data.
     """
 
-
 class SimulatedBackend(AbstractBackend):
     """
     A GA4GH backend backed by no data; used mostly for testing
@@ -496,7 +500,6 @@ class SimulatedBackend(AbstractBackend):
             self._readGroupIdMap[readGroup.getId()] = readGroup
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
-
 
 class FileSystemBackend(AbstractBackend):
     """
@@ -540,7 +543,6 @@ class FileSystemBackend(AbstractBackend):
         self._readGroupSetIds = sorted(self._readGroupSetIdMap.keys())
         self._readGroupIds = sorted(self._readGroupIdMap.keys())
 
-
 class GraphBackend(AbstractBackend):
     """
     A GA4GH backend backed by genome graphs
@@ -560,6 +562,7 @@ class GraphBackend(AbstractBackend):
         self.referenceSetsGenerator = self._graphs.searchReferenceSets
         self.referencesGenerator = self._graphs.searchReferences
         self.variantSetsGenerator = self._graphs.searchVariantSets
+        #self.variantsGenerator = self._graphs.searchVariants
         self.alleleCallsGenerator = self._graphs.searchAlleleCalls
         self.callSetsGenerator = self._graphs.searchCallSets
         self.sequencesGenerator = self._graphs.searchSequences
@@ -580,6 +583,11 @@ class GraphBackend(AbstractBackend):
         optionalParams is an array of names of parameters that can be parsed
         from the request object and passed to the objectGenerator method.
         """
+        print(requestStr)
+        print(requestClass)
+        print(responseClass)
+        print(objectGenerator)
+        print(optionalParams)
         self.startProfile()
         try:
             requestDict = json.loads(requestStr)
@@ -680,6 +688,15 @@ class GraphBackend(AbstractBackend):
         self.validateResponse(responseString, responseClass)
         self.endProfile()
         return responseString
+
+    def getVariantSets(self):
+        """
+        Returns the list of VariantSets in this backend.
+        """
+        count, protocolObjects = self.variantSetsGenerator(start=0, end=self._defaultPageSize)
+
+        variant_sets = [variant_set for variant_set in protocolObjects]
+        return variant_sets
 
     def extractSubgraph(self, requestStr):
         """

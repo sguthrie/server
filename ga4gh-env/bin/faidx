@@ -1,0 +1,10 @@
+#!/home/sguthrie/git/sguthrie/server/ga4gh-env/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'pyfaidx==0.4.2','console_scripts','faidx'
+__requires__ = 'pyfaidx==0.4.2'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('pyfaidx==0.4.2', 'console_scripts', 'faidx')()
+    )

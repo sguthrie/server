@@ -80,12 +80,14 @@ class GraphDatabase(object):
 
     def __init__(self, dataDir):
         self._dataDir = dataDir
-        # TODO: Throw exception if directory contains != 1 database file
-        self._dbFile = glob.glob(os.path.join(self._dataDir, "*.db"))[0]
+        database_files = glob.glob(os.path.join(self._dataDir, "*.sqlite3"))
+        assert len(database_files) == 1, "Expects exactly one graph topology Sqlite database (.sqlite3 file) in the data directory: %s" % (self._dataDir)
+        self._dbFile = database_files[0]
 
     def searchReferences(self, referenceSetId=None, start=0, end=None):
         """
         """
+        print("searchReferences - referencesGenerator called")
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
             count = sg.searchReferencesCount()
@@ -98,7 +100,7 @@ class GraphDatabase(object):
             reference.md5checksum = rdict['md5checksum']
             reference.name = rdict['name']
             reference.start = rdict['start']
-            reference.length = rdict['length'] 
+            reference.length = rdict['length']
             references.append(reference)
         return count, references
 
@@ -107,6 +109,7 @@ class GraphDatabase(object):
         """
         Returns a list of dictionaries holding reference set info.
         """
+        print("searchReferenceSets - referenceSetsGenerator called")
         # TODO: For now, just returns all reference sets, ignores arguments.
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
@@ -124,6 +127,7 @@ class GraphDatabase(object):
         """
         Returns a list of dictionaries holding variant set info.
         """
+        print("searchVariantSets - variantSetsGenerator called")
         # TODO: For now, just returns all variant sets, ignores arguments.
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
@@ -131,6 +135,7 @@ class GraphDatabase(object):
             variantSetDicts = sg.searchVariantSets(limits)
         variantSets = []
         for vsdict in variantSetDicts:
+            print(vsdict)
             variantSet = protocol.VariantSet()
             variantSet.id = vsdict['ID']
             variantSet.datasetId = ""  # TODO
@@ -139,9 +144,40 @@ class GraphDatabase(object):
             variantSets.append(variantSet)
         return count, variantSets
 
+    def searchVariants(self, start=0, end=None):
+        """
+        Returns a list of dictionaries holding variant info.
+        self.alleleIds = None
+        self.alternateBases = None
+        self.calls = None
+        self.created = None
+        self.end = None
+        self.id = None
+        self.info = {}
+        self.names = []
+        self.referenceBases = None
+        self.referenceName = None
+        self.start = None
+        self.updated = None
+        self.variantSetId = None
+        """
+        print("searchVariantSets - variantSetsGenerator called")
+        # TODO: For now, just returns all variants, since I'm not sure which arguments it would take.
+        limits = _makeLimits(start, end)
+        with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
+            count = sg.searchVariantsCount()
+            variantDicts = sg.searchVariants(limits)
+        variants = []
+        for vdict in variantDicts:
+            variant = protocol.Variant()
+            print(vdict)
+            variants.append(variant)
+        return count, variants
+
     def searchCallSets(self, datasetIds=None, start=0, end=None):
         """
         """
+        print("searchCallSets - callSetsGenerator called")
         # TODO: For now, just returns all variant sets, ignores arguments.
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
@@ -160,6 +196,7 @@ class GraphDatabase(object):
     def searchAlleleCalls(self, alleleId=None,
                           callSetId=None, variantSetId=None,
                           start=0, end=None):
+        print("searchAlleleCalls - alleleCallsGenerator called")
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
             count = sg.searchAlleleCallsCount(alleleId=alleleId,
@@ -179,6 +216,7 @@ class GraphDatabase(object):
         return count, alleleCalls
 
     def searchAlleles(self, variantSetId=None, start=0, end=None):
+        print("searchAlleles - allelesGenerator called")
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
             count = sg.searchAllelesCount(variantSetId=variantSetId)
@@ -205,6 +243,7 @@ class GraphDatabase(object):
         This method, like its SQL backed siblings,
         does not follow iterator convention.
         """
+        print("searchSequences - sequencesGenerator called")
         # TODO search by referenceSetId and variantSetId not yet implemented.
         limits = _makeLimits(start, end)
         count = 0
@@ -233,6 +272,7 @@ class GraphDatabase(object):
         This method, like its SQL backed siblings,
         does not follow iterator convention.
         """
+        print("searchJoins - joinsGenerator called")
         # TODO search by referenceSetId and variantSetId not yet implemented.
         # not to mention by sequenceId!
         limits = _makeLimits(start, end)
