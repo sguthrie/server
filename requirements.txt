@@ -17,5 +17,6 @@ requests==2.6.0
 snakefood
 sphinx
 numpy
+pydot
 pyfaidx
 pyfasta

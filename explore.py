@@ -6,7 +6,7 @@ import ga4gh.protocol as protocol
 #
 
 httpClient = client.HttpClient("http://localhost:8000/v0.6.g", debugLevel=0)
-
+"""
 print "==========================================================="
 print "CallSets Search"
 print "==========================================================="
@@ -17,7 +17,8 @@ callsets = []
 for thing in response:
     callsets.append(thing)
 print len(callsets)
-print callsets[0]
+if len(callsets) > 0:
+    print callsets[0]
 
 print ""
 print "==========================================================="
@@ -30,7 +31,8 @@ reference_sets = []
 for thing in response:
     reference_sets.append(thing)
 print len(reference_sets)
-print reference_sets[0]
+if len(reference_sets) > 0:
+    print reference_sets[0]
 
 print ""
 print "==========================================================="
@@ -44,7 +46,8 @@ for thing in response:
     references.append(thing)
 
 print len(references)
-print references[0]
+if len(references) > 0:
+    print references[0]
 
 print ""
 print "==========================================================="
@@ -58,7 +61,8 @@ for thing in response:
     variant_sets.append(thing)
 
 print len(variant_sets)
-print variant_sets[0]
+if len(variant_sets) > 0:
+    print variant_sets[0]
 
 print ""
 print "==========================================================="
@@ -72,7 +76,8 @@ for thing in response:
     allele_calls.append(thing)
 
 print len(allele_calls)
-print allele_calls[0]
+if len(allele_calls) > 0:
+    print allele_calls[0]
 
 print ""
 print "==========================================================="
@@ -87,7 +92,7 @@ for thing in response:
 
 print len(alleles)
 print alleles[0]
-
+"""
 print ""
 print "==========================================================="
 print "Sequences Search"
@@ -102,6 +107,7 @@ for thing in response:
 print len(sequences)
 print sequences[0]
 
+"""
 print ""
 print "==========================================================="
 print "Joins Search"
@@ -114,12 +120,21 @@ joins = []
 for thing in response:
     joins.append(thing)
 
-print('Allele calls: %i' % (len(allele_calls)))
-print('Alleles: %i' % (len(alleles)))
-print('Sequences: %i' % (len(sequences)))
-print('Joins: %i' % (len(joins)))
-print('Callset: %i' % (len(callsets)))
-print(allele_calls[-1])
-print(alleles[-1])
-print(sequences[-1])
-print(joins[-1])
+print len(joins)
+print joins[0]
+
+
+print ""
+print "==========================================================="
+print "ExtractSubgraph"
+print "==========================================================="
+request = protocol.ExtractSubgraphRequest()
+request.position = protocol.Position()
+request.position.sequenceId = int(sequences[0].id)
+request.position.position = 1
+request.radius = 1
+
+response = httpClient.extractSubgraph(request)
+
+print response
+"""

@@ -13,6 +13,8 @@ import datetime
 import flask
 import flask.ext.cors as cors
 import humanize
+import pydot
+import json
 
 import ga4gh
 import ga4gh.backend as backend
@@ -243,6 +245,37 @@ def handleFlaskPostRequest(version, flaskRequest, endpoint):
 @app.route('/')
 def index():
     return flask.render_template('index.html', info=app.serverStatus)
+
+@app.route('/visual')
+def visualize():
+    graph = pydot.Dot(graph_type='digraph')
+    graph_nodes = {}
+
+    request = protocol.SearchSequencesRequest()
+    request.pageToken = '0'
+    while request.pageToken != None:
+        responseStr = app.backend.searchSequences(request.toJsonString())
+        response = json.loads(responseStr)
+        request.pageToken = response['nextPageToken']
+        for sequence in response['sequences']:
+            name = "ID %s (%s bases)" % (sequence['id'], sequence['length'])
+            node = pydot.Node(name)
+            graph.add_node(node)
+            graph_nodes[sequence['id']] = node
+    request = protocol.SearchJoinsRequest()
+    request.pageToken = '0'
+    while request.pageToken != None:
+        responseStr = app.backend.searchJoins(request.toJsonString())
+        response = json.loads(responseStr)
+        request.pageToken = response['nextPageToken']
+        for join in response['joins']:
+            node1 = graph_nodes[join['side1']['base']['sequenceId']]
+            node2 = graph_nodes[join['side2']['base']['sequenceId']]
+            graph.add_edge(pydot.Edge(node1, node2))
+    #Callset paths
+    #allele_path_items = app.backend.getPathItems()
+    graph.write_svg('ga4gh/static/tmp_graph.svg')
+    return flask.render_template('visual.html', info=app.serverStatus, sequences=response)
 
 
 @app.route('/<version>/references/<id>', methods=['GET'])

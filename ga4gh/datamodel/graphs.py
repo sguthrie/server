@@ -144,35 +144,21 @@ class GraphDatabase(object):
             variantSets.append(variantSet)
         return count, variantSets
 
-    def searchVariants(self, start=0, end=None):
+    def searchAllelePathItems(self, start=0, end=None):
         """
-        Returns a list of dictionaries holding variant info.
-        self.alleleIds = None
-        self.alternateBases = None
-        self.calls = None
-        self.created = None
-        self.end = None
-        self.id = None
-        self.info = {}
-        self.names = []
-        self.referenceBases = None
-        self.referenceName = None
-        self.start = None
-        self.updated = None
-        self.variantSetId = None
+        Returns a list of dictionaries holding allele path info.
         """
-        print("searchVariantSets - variantSetsGenerator called")
-        # TODO: For now, just returns all variants, since I'm not sure which arguments it would take.
+        print("searchAllelePathItems - AllelePathItemsGenerator called")
+        # TODO: For now, just returns all allele path items, since I'm not sure
+        #       which arguments it would take.
         limits = _makeLimits(start, end)
         with sidegraph.SideGraph(self._dbFile, self._dataDir) as sg:
-            count = sg.searchVariantsCount()
-            variantDicts = sg.searchVariants(limits)
-        variants = []
-        for vdict in variantDicts:
-            variant = protocol.Variant()
-            print(vdict)
-            variants.append(variant)
-        return count, variants
+            count = sg.searchAllelePathItemsCount()
+            allelePathItemDicts = sg.searchAllelePathItems(limits)
+        allele_path_items = []
+        for adict in allelePathItemtDicts:
+            allele_path_items.append(aict)
+        return count, allele_path_items
 
     def searchCallSets(self, datasetIds=None, start=0, end=None):
         """

@@ -569,6 +569,10 @@ class GraphBackend(AbstractBackend):
         self.joinsGenerator = self._graphs.searchJoins
         self.allelesGenerator = self._graphs.searchAlleles
 
+    def getPathItems(self):
+        allele_path_items = self._graphs.searchAllelePathItems()
+        return allele_path_items
+        
     def runSearchRequest(
             self, requestStr, requestClass, responseClass, objectGenerator,
             optionalParams = None):

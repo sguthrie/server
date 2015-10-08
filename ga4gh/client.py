@@ -144,6 +144,7 @@ class HttpClient(object):
         notDone = True
         while notDone:
             data = protocolRequest.toJsonString()
+            print(data)
             responseObject = self._doRequest(
                 'POST', fullUrl, protocolResponseClass, httpData=data)
             valueList = getattr(

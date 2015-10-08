@@ -146,6 +146,19 @@ class SideGraph(object):
     def searchVariantSets(self, limits=None):
         return self._getRowsAsDicts("VariantSet", limits)
 
+    def searchAllelePathItemsCount(self):
+        return self._countRows("AllelePathItem")
+
+    def searchAllelePathItems(self, limits=None):
+        if findBadChars.search("AllelePathItem"):
+            raise Exception("table name contains invalid characters")
+
+        sql = "SELECT * FROM {}".format("AllelePathItem")
+        sql += " ORDER BY PATHITEMINDEX"
+        sql += _limitsSql(limits)
+        query = self._graphDb.execute(sql)
+        return _sqliteRows2dicts(query.fetchall())
+
     def searchAllelesCount(self, variantSetId=None):
         return self._countRows("Allele",
                                variantSetID=variantSetId)
