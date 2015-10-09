@@ -156,8 +156,8 @@ class GraphDatabase(object):
             count = sg.searchAllelePathItemsCount()
             allelePathItemDicts = sg.searchAllelePathItems(limits)
         allele_path_items = []
-        for adict in allelePathItemtDicts:
-            allele_path_items.append(aict)
+        for adict in allelePathItemDicts:
+            allele_path_items.append(adict)
         return count, allele_path_items
 
     def searchCallSets(self, datasetIds=None, start=0, end=None):

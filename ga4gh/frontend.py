@@ -248,6 +248,51 @@ def index():
 
 @app.route('/visual')
 def visualize():
+    # Get Callsets to find references
+    callsets_of_interest = []
+    request = protocol.SearchCallSetsRequest()
+    request.pageToken = '0'
+    while request.pageToken != None:
+        responseStr = app.backend.searchCallSets(request.toJsonString())
+        response = json.loads(responseStr)
+        request.pageToken = response['nextPageToken']
+        for callset in response['callSets']:
+            if callset['sampleId'].startswith('GRCh'):
+                callsets_of_interest.append(callset)
+
+    accepted_callset_ids = [callset['id'] for callset in callsets_of_interest]
+    allele_calls = []
+    request = protocol.SearchAlleleCallsRequest()
+    request.pageToken = '0'
+    while request.pageToken != None:
+        responseStr = app.backend.searchAlleleCalls(request.toJsonString())
+        response = json.loads(responseStr)
+        request.pageToken = response['nextPageToken']
+        for allele_call in response['alleleCalls']:
+            if allele_call['callSetId'] in accepted_callset_ids:
+                allele_calls.append(allele_call)
+
+
+    accepted_allele_ids = [allele_call['alleleId'] for allele_call in allele_calls]
+    alleles = []
+    request = protocol.SearchAllelesRequest()
+    request.pageToken = '0'
+    while request.pageToken != None:
+        responseStr = app.backend.searchAlleles(request.toJsonString())
+        response = json.loads(responseStr)
+        request.pageToken = response['nextPageToken']
+        for allele in response['alleles']:
+            if allele['id'] in accepted_allele_ids:
+                alleles.append(allele)
+
+    accepted_allele_paths = []
+    sequences_to_find = []
+    count, allele_path_items = app.backend.getPathItems()
+    for allele_path_item in allele_path_items:
+        if allele_path_item['alleleID'] in accepted_allele_ids:
+            sequences_to_find.append(allele_path_item['sequenceID'])
+            accepted_allele_paths.append(allele_path_item)
+
     graph = pydot.Dot(graph_type='digraph')
     graph_nodes = {}
 
@@ -258,10 +303,12 @@ def visualize():
         response = json.loads(responseStr)
         request.pageToken = response['nextPageToken']
         for sequence in response['sequences']:
-            name = "ID %s (%s bases)" % (sequence['id'], sequence['length'])
-            node = pydot.Node(name)
-            graph.add_node(node)
-            graph_nodes[sequence['id']] = node
+            if sequence['id'] in sequences_to_find:
+                name = "ID %s (%s bases)" % (sequence['id'], sequence['length'])
+                node = pydot.Node(name)
+                graph.add_node(node)
+                graph_nodes[sequence['id']] = node
+
     request = protocol.SearchJoinsRequest()
     request.pageToken = '0'
     while request.pageToken != None:
@@ -269,11 +316,13 @@ def visualize():
         response = json.loads(responseStr)
         request.pageToken = response['nextPageToken']
         for join in response['joins']:
-            node1 = graph_nodes[join['side1']['base']['sequenceId']]
-            node2 = graph_nodes[join['side2']['base']['sequenceId']]
-            graph.add_edge(pydot.Edge(node1, node2))
-    #Callset paths
-    #allele_path_items = app.backend.getPathItems()
+            n1 = join['side1']['base']['sequenceId']
+            n2 = join['side2']['base']['sequenceId']
+            if n1 in sequences_to_find and n2 in sequences_to_find:
+                node1 = graph_nodes[n1]
+                node2 = graph_nodes[n2]
+                graph.add_edge(pydot.Edge(node1, node2))
+
     graph.write_svg('ga4gh/static/tmp_graph.svg')
     return flask.render_template('visual.html', info=app.serverStatus, sequences=response)
 

@@ -6,20 +6,8 @@ import ga4gh.protocol as protocol
 #
 
 httpClient = client.HttpClient("http://localhost:8000/v0.6.g", debugLevel=0)
+
 """
-print "==========================================================="
-print "CallSets Search"
-print "==========================================================="
-request = protocol.SearchCallSetsRequest()
-response = httpClient.searchCallSets(request)
-
-callsets = []
-for thing in response:
-    callsets.append(thing)
-print len(callsets)
-if len(callsets) > 0:
-    print callsets[0]
-
 print ""
 print "==========================================================="
 print "ReferenceSets Search"
@@ -66,35 +54,6 @@ if len(variant_sets) > 0:
 
 print ""
 print "==========================================================="
-print "AlleleCalls Search"
-print "==========================================================="
-request = protocol.SearchAlleleCallsRequest()
-response = httpClient.searchAlleleCalls(request)
-
-allele_calls = []
-for thing in response:
-    allele_calls.append(thing)
-
-print len(allele_calls)
-if len(allele_calls) > 0:
-    print allele_calls[0]
-
-print ""
-print "==========================================================="
-print "Alleles Search"
-print "==========================================================="
-request = protocol.SearchAllelesRequest()
-response = httpClient.searchAlleles(request)
-
-alleles = []
-for thing in response:
-    alleles.append(thing)
-
-print len(alleles)
-print alleles[0]
-"""
-print ""
-print "==========================================================="
 print "Sequences Search"
 print "==========================================================="
 request = protocol.SearchSequencesRequest()
@@ -107,7 +66,7 @@ for thing in response:
 print len(sequences)
 print sequences[0]
 
-"""
+
 print ""
 print "==========================================================="
 print "Joins Search"
@@ -138,3 +97,41 @@ response = httpClient.extractSubgraph(request)
 
 print response
 """
+
+print "==========================================================="
+print "CallSets Search - get references"
+print "==========================================================="
+request = protocol.SearchCallSetsRequest()
+response = httpClient.searchCallSets(request)
+
+callsets_of_interest = []
+for callset in response:
+    if not callset.sampleId.startswith('hu'):
+        callsets_of_interest.append(callset)
+
+print ""
+print "==========================================================="
+print "AlleleCalls Search - get allele calls of references"
+print "==========================================================="
+request = protocol.SearchAlleleCallsRequest()
+response = httpClient.searchAlleleCalls(request)
+
+accepted_callset_ids = [callset.id for callset in callsets_of_interest]
+allele_calls = []
+for allele_call in response:
+    if allele_call.callSetId in accepted_callset_ids:
+        allele_calls.append(allele_call)
+
+print ""
+print "==========================================================="
+print "Alleles Search - get alleles of references"
+print "==========================================================="
+request = protocol.SearchAllelesRequest()
+response = httpClient.searchAlleles(request)
+
+accepted_allele_ids = [allele_call.alleleId for allele_call in allele_calls]
+alleles = []
+for allele in response:
+    if allele.id in accepted_allele_ids:
+        print allele
+        alleles.append(allele)
