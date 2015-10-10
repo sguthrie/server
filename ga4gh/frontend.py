@@ -303,7 +303,7 @@ def visualize():
         response = json.loads(responseStr)
         request.pageToken = response['nextPageToken']
         for sequence in response['sequences']:
-            if sequence['id'] in sequences_to_find:
+            if True: #sequence['id'] in sequences_to_find:
                 name = "ID %s (%s bases)" % (sequence['id'], sequence['length'])
                 node = pydot.Node(name)
                 graph.add_node(node)
@@ -311,18 +311,25 @@ def visualize():
 
     request = protocol.SearchJoinsRequest()
     request.pageToken = '0'
+    confused_strands = []
     while request.pageToken != None:
         responseStr = app.backend.searchJoins(request.toJsonString())
         response = json.loads(responseStr)
         request.pageToken = response['nextPageToken']
         for join in response['joins']:
-            n1 = join['side1']['base']['sequenceId']
-            n2 = join['side2']['base']['sequenceId']
-            if n1 in sequences_to_find and n2 in sequences_to_find:
-                node1 = graph_nodes[n1]
-                node2 = graph_nodes[n2]
+            if join['side1']['strand'] == join['side2']['strand']:
+                confused_strands.append(join)
+                continue
+            if join['side1']['strand'] == 'POS_STRAND':
+                end_node = join['side1']['base']['sequenceId']
+                start_node = join['side2']['base']['sequenceId']
+            else:
+                end_node = join['side2']['base']['sequenceId']
+                start_node = join['side1']['base']['sequenceId']
+            if True:#n1 in sequences_to_find and n2 in sequences_to_find:
+                node1 = graph_nodes[start_node]
+                node2 = graph_nodes[end_node]
                 graph.add_edge(pydot.Edge(node1, node2))
-
     graph.write_svg('ga4gh/static/tmp_graph.svg')
     return flask.render_template('visual.html', info=app.serverStatus, sequences=response)
 

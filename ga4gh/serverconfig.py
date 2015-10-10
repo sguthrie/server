@@ -31,7 +31,7 @@ class DevelopmentConfig(BaseConfig):
     """
     Configuration used for development.
     """
-    DATA_SOURCE = "curoverse-graph-20150917"
+    DATA_SOURCE = "curoverse-graph-self-gen"
     DEBUG = True
 
 
